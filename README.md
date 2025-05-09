@@ -1,7 +1,3 @@
-以下是整合後的完整 `README.md`，我已將「第 6 節：授權與致謝」加到最後，並保持原本的格式與語調一致：
-
----
-
 # oTree 碳市場與對照實驗專案
 
 > 本專案基於 **oTree — An open‑source platform for laboratory, online, and field experiments** (Chen, Schonger & Wickens, 2016) 所打造，適用於線上或實驗室環境中探討碳排放政策與市場互動的行為反應。請於任何學術或公開發表時引用該文獻，詳見「引用文獻」章節。
