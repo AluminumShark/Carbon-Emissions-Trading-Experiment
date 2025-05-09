@@ -34,13 +34,11 @@
                             <h5>您的基本資訊</h5>
                         </div>
                         <ul class="list-group list-group-flush">
-                            <li class="list-group-item"><strong>邊際成本：</strong> {{ marginal_cost }}</li>
+                            <li class="list-group-item"><strong>邊際成本函數：</strong> MC(q) = {{ marginal_cost_coefficient }} × q</li>
+                            <li class="list-group-item"><strong>當前邊際成本：</strong> <span id="mc-display">0</span>（基於目前選擇的生產量）</li>
                             <li class="list-group-item"><strong>每單位碳排放：</strong> {{ carbon_emission_per_unit }}</li>
                             <li class="list-group-item"><strong>市場售價：</strong> {{ market_price }}</li>
                             <li class="list-group-item"><strong>最大生產上限：</strong> {{ max_production }} 單位</li>
-                            {% if treatment == 'trading' %}
-                                <li class="list-group-item"><strong>當前碳權持有：</strong> {{ current_permits }} 單位</li>
-                            {% endif %}
                         </ul>
                     </div>
                 </div>
@@ -51,12 +49,13 @@
                             <h5>獲利估算</h5>
                         </div>
                         <div class="card-body">
-                            <p><strong>每單位收入：</strong> {{ unit_income }}</p>
-                            <p><strong>每單位成本：</strong> {{ unit_cost }}</p>
+                            <p><strong>銷售價格：</strong> {{ unit_income }}</p>
+                            <p><strong>邊際成本 (MC)：</strong> <span id="mc-display2">0</span></p>
+                            <p><strong>平均成本：</strong> <span id="unit-cost">--</span></p>
                             {% if treatment == 'tax' %}
                                 <p><strong>每單位碳稅：</strong> {{ unit_tax }}</p>
                             {% endif %}
-                            <p><strong>每單位淨利潤：</strong> {{ unit_profit }}</p>
+                            <p><strong>平均淨利潤：</strong> <span id="unit-profit">--</span></p>
                         </div>
                     </div>
                 </div>
@@ -79,12 +78,11 @@
                         type="range"
                         class="form-control-range"
                         id="production-slider"
-                        {% if max_possible_production > 0 %}name="production"{% endif %}
+                        name="production"
                         min="0"
                         max="{{ max_possible_production }}"
                         step="1"
                         value="{% if player.field_maybe_none('production') %}{{ player.production }}{% else %}0{% endif %}"
-                        {% if max_possible_production == 0 %}disabled{% endif %}
                         oninput="updateProductionDisplay()"
                     >
                     
@@ -92,19 +90,9 @@
                         <span>0</span>
                         <span>{{ max_possible_production }}</span>
                     </div>
-
-                    {% if max_possible_production == 0 %}
-                        <!-- 當無法生產時，添加隱藏的生產量輸入欄位，值為0 -->
-                        <input type="hidden" name="production" value="0">
-                        <div class="alert alert-danger mt-3">
-                            <i class="fa fa-exclamation-triangle"></i> 
-                            您目前沒有足夠的碳權，無法生產。您將確認0生產量。
-                        </div>
-                    {% endif %}
                 </div>
 
                 <div class="form-group mt-4 text-center">
-                    <!-- 移除按鈕的禁用條件，確保玩家始終可以提交表單 -->
                     <button class="btn btn-primary btn-lg" type="submit">
                         確認生產量
                     </button>
@@ -116,7 +104,7 @@
                 <div id="profit-estimate">
                     <ul>
                         <li>總收入：<span id="total-revenue">0</span> = <span id="display-quantity">0</span> × {{ unit_income }}</li>
-                        <li>總成本：<span id="total-cost">0</span> = <span id="display-quantity2">0</span> × {{ unit_cost }}</li>
+                        <li>總成本：<span id="total-cost">0</span> = ({{ marginal_cost_coefficient }} × <span id="display-quantity2">0</span>²) ÷ 2</li>
                         {% if treatment == 'tax' %}
                             <li>碳稅：<span id="total-tax">0</span> = <span id="display-quantity3">0</span> × {{ carbon_emission_per_unit }} × {{ tax_rate }}</li>
                         {% endif %}
@@ -134,6 +122,12 @@ function updateProductionDisplay() {
     const qty = parseInt(document.getElementById('production-slider').value);
     document.getElementById('production-value').innerText = qty;
     
+    // 更新邊際成本顯示
+    const coef = {{ marginal_cost_coefficient }};
+    const mc = coef * qty;
+    document.getElementById('mc-display').innerText = mc;
+    document.getElementById('mc-display2').innerText = mc;
+    
     // 更新利潤預估
     updateProfitEstimate(qty);
 }
@@ -142,7 +136,7 @@ function updateProductionDisplay() {
 function updateProfitEstimate(qty) {
     // 基本參數
     const unitIncome = {{ unit_income }};
-    const unitCost = {{ unit_cost }};
+    const costCoefficient = {{ marginal_cost_coefficient }};
     const emissionRate = {{ carbon_emission_per_unit }};
     {% if treatment == 'tax' %}
         const taxRate = {{ tax_rate }};
@@ -154,15 +148,32 @@ function updateProfitEstimate(qty) {
     
     // 計算各項費用
     const totalRevenue = qty * unitIncome;
-    const totalCost = qty * unitCost;
-    const totalTax = qty * unitTax;
+    
+    // 邊際成本 = a*q (當前生產量的邊際成本)
+    const marginalCost = costCoefficient * qty;
+    
+    // 總成本 = ∫(a*q)dq = (a*q^2)/2
+    const totalCost = (costCoefficient * Math.pow(qty, 2)) / 2;
+    
+    const totalTax = qty * emissionRate * taxRate;
     const netProfit = totalRevenue - totalCost - totalTax;
     
+    // 計算平均成本和平均利潤 (當數量為0時避免除以0)
+    let avgCost = 0;
+    let unitProfit = 0;
+    if (qty > 0) {
+        avgCost = (totalCost / qty).toFixed(2);
+        unitProfit = (netProfit / qty).toFixed(2);
+    }
+    
     // 更新顯示
+    document.getElementById('unit-cost').innerText = avgCost;
+    document.getElementById('unit-profit').innerText = unitProfit;
+    
     document.getElementById('display-quantity').innerText = qty;
     document.getElementById('display-quantity2').innerText = qty;
     document.getElementById('total-revenue').innerText = totalRevenue;
-    document.getElementById('total-cost').innerText = totalCost;
+    document.getElementById('total-cost').innerText = totalCost.toFixed(2);
     
     {% if treatment == 'tax' %}
         document.getElementById('display-quantity3').innerText = qty;
@@ -170,7 +181,7 @@ function updateProfitEstimate(qty) {
     {% endif %}
     
     const profitElement = document.getElementById('net-profit');
-    profitElement.innerText = netProfit;
+    profitElement.innerText = netProfit.toFixed(2);
     
     // 設定顏色
     if (netProfit > 0) {

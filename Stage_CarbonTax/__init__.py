@@ -28,7 +28,7 @@ class Group(BaseGroup):
 
 class Player(BasePlayer):
     is_dominant = models.BooleanField()
-    marginal_cost = models.CurrencyField()
+    marginal_cost_coefficient = models.CurrencyField()  # 改名為係數
     carbon_emission_per_unit = models.IntegerField()
     market_price = models.CurrencyField()
     production = models.IntegerField(min=0, max=C.MAX_PRODUCTION)
@@ -44,7 +44,8 @@ def initialize_roles(subsession: Subsession):
     subsession.market_price = shared_price
     for p in subsession.get_players():
         p.is_dominant = random.choice([True, False])
-        p.marginal_cost = cu(random.randint(0, 30) if p.is_dominant else random.randint(15, 35))
+        # 邊際成本係數而非固定邊際成本
+        p.marginal_cost_coefficient = cu(random.randint(0, 5) if p.is_dominant else random.randint(2, 7))
         p.carbon_emission_per_unit = 3 if p.is_dominant else 1
         p.max_production = 20 if p.is_dominant else 8
         p.market_price = shared_price
@@ -57,7 +58,8 @@ def set_payoffs(group: BaseGroup):
         if p.production is None:
             p.production = 0
         
-        cost = p.production * p.marginal_cost
+        # 使用積分計算總成本: ∫(a*q)dq = (a*q^2)/2
+        cost = (p.marginal_cost_coefficient * p.production**2) / 2
         revenue = p.production * p.market_price
         emissions = p.production * p.carbon_emission_per_unit
         tax = emissions * p.subsession.tax_rate
@@ -94,27 +96,23 @@ class ProductionDecision(Page):
     @staticmethod
     def vars_for_template(player):
         maxp = player.max_production  # 碳稅組不受碳權限制
-            
+        
         unit_income = int(player.market_price)
-        unit_cost = int(player.marginal_cost)
         tax_rate = int(player.subsession.tax_rate)
         emissions_per_unit = player.carbon_emission_per_unit
         unit_tax = emissions_per_unit * tax_rate
-        unit_profit = unit_income - unit_cost - unit_tax
 
         return dict(
             max_production=player.max_production,
             max_possible_production=maxp,
-            marginal_cost=player.marginal_cost,
+            marginal_cost_coefficient=int(player.marginal_cost_coefficient),  # 改為係數
             carbon_emission_per_unit=player.carbon_emission_per_unit,
             market_price=player.market_price,
             tax_rate=tax_rate,
             treatment='tax',
             treatment_text='碳稅',
             unit_income=unit_income,
-            unit_cost=unit_cost,
             unit_tax=unit_tax,
-            unit_profit=unit_profit,
         )
 
 class ResultsWaitPage(WaitPage):
@@ -124,11 +122,20 @@ class ResultsWaitPage(WaitPage):
 class Results(Page):
     @staticmethod
     def vars_for_template(player: Player):
-        production_cost = int(player.production * player.marginal_cost)
+        # 使用新的成本函數計算
+        production_cost = int((player.marginal_cost_coefficient * player.production**2) / 2)
         remaining_rounds = C.NUM_ROUNDS - player.round_number
         total_emissions = player.production * player.carbon_emission_per_unit
         # 計算進度條百分比
         progress_percentage = round((player.round_number / C.NUM_ROUNDS) * 100)
+        
+        # 計算最終邊際成本
+        final_marginal_cost = int(player.marginal_cost_coefficient * player.production) if player.production > 0 else 0
+        
+        # 計算平均成本
+        avg_cost = 0
+        if player.production > 0:
+            avg_cost = round(production_cost / player.production, 2)
         
         return dict(
             market_price=player.market_price,
@@ -143,8 +150,10 @@ class Results(Page):
             tax_rate=player.subsession.tax_rate,
             total_emissions=total_emissions,
             is_last_round=(player.round_number == C.NUM_ROUNDS),
-            total_rounds=C.NUM_ROUNDS,  # 新增
-            progress_percentage=progress_percentage,  # 新增
+            total_rounds=C.NUM_ROUNDS,
+            progress_percentage=progress_percentage,
+            final_marginal_cost=final_marginal_cost,
+            avg_cost=avg_cost,
         )
 
 page_sequence = [
