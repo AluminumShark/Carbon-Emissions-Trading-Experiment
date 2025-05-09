@@ -1,0 +1,166 @@
+{% extends 'global/Page.html' %}
+{% load otree static %}
+
+{% block title %}交易結果{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h2>本輪交易結果</h2>
+        </div>
+        <div class="card-body">
+            <!-- 結果摘要 -->
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header bg-success text-white text-center">
+                            <h4>本輪交易摘要</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 text-center">
+                                    <div class="bg-light p-3 rounded">
+                                        <h5>最終現金</h5>
+                                        <h2 class="text-success">{{ final_cash }}</h2>
+                                        <small class="text-muted">當前餘額</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 text-center">
+                                    <div class="bg-light p-3 rounded">
+                                        <h5>{{ item_name }}持有</h5>
+                                        <h2 class="text-primary">{{ current_items }}</h2>
+                                        <small class="text-muted">當前數量</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 text-center">
+                                    <div class="
+                                        {% if final_cash > 300 %}bg-success text-white{% elif final_cash < 300 %}bg-danger text-white{% else %}bg-secondary text-white{% endif %}
+                                        p-3 rounded">
+                                        <h5>收益比較</h5>
+                                        <h2>{% if final_cash >= 300 %}+{{ final_cash|add:"-300" }}{% else %}{{ final_cash|add:"-300" }}{% endif %}</h2>
+                                        <small>與初始資金比較</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 交易統計 -->
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h4>交易統計</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th colspan="2" class="text-center bg-success text-white">買入統計</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>累計購買數量</strong></td>
+                                        <td class="text-right">{{ total_bought }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>累計購買支出</strong></td>
+                                        <td class="text-right">{{ total_spent }}</td>
+                                    </tr>
+                                    {% if total_bought > 0 %}
+                                    <tr>
+                                        <td><strong>平均購買價格</strong></td>
+                                        <td class="text-right">{{ total_spent|div:total_bought|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th colspan="2" class="text-center bg-danger text-white">賣出統計</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>累計賣出數量</strong></td>
+                                        <td class="text-right">{{ total_sold }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>累計賣出收入</strong></td>
+                                        <td class="text-right">{{ total_earned }}</td>
+                                    </tr>
+                                    {% if total_sold > 0 %}
+                                    <tr>
+                                        <td><strong>平均賣出價格</strong></td>
+                                        <td class="text-right">{{ total_earned|div:total_sold|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {% if total_bought > 0 and total_sold > 0 %}
+                    <div class="alert alert-info mt-3">
+                        <h5>交易效益分析</h5>
+                        <p><strong>交易淨收入：</strong> {{ total_earned|sub:total_spent }}</p>
+                        <p><strong>平均交易利潤：</strong> 
+                           {% if total_earned >= total_spent %}
+                               <span class="text-success">+{{ total_earned|sub:total_spent|div:total_sold|floatformat:2 }} 每項</span>
+                           {% else %}
+                               <span class="text-danger">{{ total_earned|sub:total_spent|div:total_sold|floatformat:2 }} 每項</span>
+                           {% endif %}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 進度指示 -->
+            <div class="card">
+                <div class="card-body text-center">
+                    {% if is_last_round %}
+                        <div class="alert alert-success">
+                            <h4>恭喜！您已完成所有實驗輪次。</h4>
+                            <p>感謝您參與本次 {{ item_name }}交易實驗！</p>
+                            <p>您的最終收益為：<strong>{{ final_cash }}</strong></p>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <h5>實驗進度</h5>
+                            <p>還有 <strong>{{ remaining_rounds }}</strong> 輪實驗。</p>
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: {{ progress_percentage }}%;" 
+                                     aria-valuenow="{{ player.round_number }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="{{ total_rounds }}">
+                                    第 {{ player.round_number }} / {{ total_rounds }} 輪
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-4">
+        {{ next_button }}
+    </div>
+</div>
+
+<style>
+.table th, .table td {
+    padding: 0.5rem;
+}
+</style>
+
+{% endblock %}

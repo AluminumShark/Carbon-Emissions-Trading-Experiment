@@ -1,0 +1,156 @@
+{% extends 'global/Page.html' %}
+{% load otree static %}
+
+{% block title %}實驗結果{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h2>本輪結果</h2>
+        </div>
+        <div class="card-body">
+            <!-- 處理組別指示 -->
+            <div class="alert 
+                {% if treatment == 'trading' %}alert-info{% elif treatment == 'tax' %}alert-warning{% else %}alert-success{% endif %}">
+                <h4>
+                    您屬於 <strong>{{ treatment_text }}組</strong>
+                </h4>
+            </div>
+
+            <!-- 結果摘要 -->
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header bg-success text-white text-center">
+                            <h4>本輪獲利摘要</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 text-center">
+                                    <div class="bg-light p-3 rounded">
+                                        <h5>您的生產量</h5>
+                                        <h2 class="text-primary">{{ player.production }}</h2>
+                                        <small class="text-muted">單位</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 text-center">
+                                    <div class="bg-light p-3 rounded">
+                                        <h5>市場售價</h5>
+                                        <h2>{{ market_price }}</h2>
+                                        <small class="text-muted">元/單位</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 text-center">
+                                    <div class="
+                                        {% if net_profit > 0 %}bg-success text-white{% elif net_profit < 0 %}bg-danger text-white{% else %}bg-secondary text-white{% endif %}
+                                        p-3 rounded">
+                                        <h5>最終淨利潤</h5>
+                                        <h2>{{ net_profit }}</h2>
+                                        <small>最終資金：{{ final_cash }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 詳細結算 -->
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h4>詳細計算</h4>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>項目</th>
+                                <th>計算</th>
+                                <th class="text-right">金額</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>總收入</strong></td>
+                                <td>{{ player.production }} × {{ market_price }}</td>
+                                <td class="text-right">{{ revenue }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>總成本</strong></td>
+                                <td>{{ player.production }} × {{ player.marginal_cost }}</td>
+                                <td class="text-right">{{ production_cost }}</td>
+                            </tr>
+                            {% if treatment == 'tax' %}
+                            <tr>
+                                <td><strong>碳稅支出</strong></td>
+                                <td>{{ total_emissions }} × {{ tax_rate }}</td>
+                                <td class="text-right">{{ carbon_tax_paid }}</td>
+                            </tr>
+                            {% endif %}
+                            <tr class="table-{% if net_profit > 0 %}success{% elif net_profit < 0 %}danger{% else %}secondary{% endif %}">
+                                <td><strong>淨利潤</strong></td>
+                                <td>收入 - 成本{% if treatment == 'tax' %} - 碳稅{% endif %}</td>
+                                <td class="text-right"><strong>{{ net_profit }}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 環境數據 -->
+            {% if treatment != 'control' %}
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5>環境影響</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>本輪總碳排放：</strong> {{ total_emissions }} 單位</p>
+                            <p><strong>單位生產碳排放：</strong> {{ player.carbon_emission_per_unit }} 單位</p>
+                        </div>
+                        {% if treatment == 'tax' %}
+                        <div class="col-md-6">
+                            <p><strong>碳稅率：</strong> {{ tax_rate }} 元/單位</p>
+                            <p><strong>總碳稅繳納：</strong> {{ carbon_tax_paid }} 元</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 進度指示 -->
+            <div class="card">
+                <div class="card-body text-center">
+                    {% if is_last_round %}
+                        <div class="alert alert-success">
+                            <h4>恭喜！您已完成所有實驗輪次。</h4>
+                            <p>感謝您的參與！</p>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <h5>實驗進度</h5>
+                            <p>還有 <strong>{{ remaining_rounds }}</strong> 輪實驗。</p>
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: {{ progress_percentage }}%;" 
+                                     aria-valuenow="{{ player.round_number }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="{{ total_rounds }}">
+                                    第 {{ player.round_number }} / {{ total_rounds }} 輪
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-4">
+        {{ next_button }}
+    </div>
+</div>
+{% endblock %}

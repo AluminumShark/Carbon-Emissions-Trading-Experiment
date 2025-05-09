@@ -1,0 +1,137 @@
+{% extends 'global/Page.html' %}
+{% load otree static %}
+
+{% block title %}MUDA 物品交易實驗{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h2>MUDA 物品交易實驗規則說明</h2>
+    </div>
+    <div class="card-body">
+        <p class="lead">歡迎參加本次物品交易實驗！</p>
+
+        <div class="alert alert-primary">
+            <h4>實驗說明</h4>
+            <p>在此實驗中，您可以與其他參與者進行{{ item_name }}的買賣交易。您的目標是透過交易來獲得最大收益。</p>
+        </div>
+
+        <div class="card bg-light mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4>實驗流程</h4>
+            </div>
+            <div class="card-body">
+                <ol class="list-group list-group-numbered">
+                    <li class="list-group-item d-flex">
+                        <span class="badge badge-primary mr-3">1</span>
+                        <div>
+                            <strong>即時交易市場</strong>
+                            <p class="text-muted mb-0">與其他參與者進行即時{{ item_name }}買賣交易</p>
+                        </div>
+                    </li>
+                    <li class="list-group-item d-flex">
+                        <span class="badge badge-primary mr-3">2</span>
+                        <div>
+                            <strong>查看結果</strong>
+                            <p class="text-muted mb-0">查看本輪的交易統計和持有情況</p>
+                        </div>
+                    </li>
+                    <li class="list-group-item d-flex">
+                        <span class="badge badge-primary mr-3">3</span>
+                        <div>
+                            <strong>進入下一輪</strong>
+                            <p class="text-muted mb-0">重複以上步驟直至實驗結束</p>
+                        </div>
+                    </li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-success text-white">
+                        <h5>實驗目標</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled">
+                            <li>✓ 透過交易獲得最大利潤</li>
+                            <li>✓ 觀察市場價格變化</li>
+                            <li>✓ 制定最佳交易策略</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-info text-white">
+                        <h5>交易規則</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled">
+                            <li>• 您可以隨時買入或賣出{{ item_name }}</li>
+                            <li>• 買入需要有足夠的現金</li>
+                            <li>• 賣出需要有足夠的{{ item_name }}</li>
+                            <li>• 交易會自動撮合成功</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <h4>基本實驗資訊</h4>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>實驗輪數</span>
+                    <span class="badge badge-primary badge-pill">{{ num_rounds }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>初始資金</span>
+                    <span class="badge badge-primary badge-pill">300</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>交易項目</span>
+                    <span class="badge badge-primary badge-pill">{{ item_name }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>實驗類型</span>
+                    <span class="badge badge-primary badge-pill">物品交易</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card bg-light mt-4">
+            <div class="card-header bg-info text-white">
+                <h5>交易界面說明</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>買單（綠色）</h6>
+                        <p>想要購買{{ item_name }}的訂單，最高價格在上方</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>賣單（紅色）</h6>
+                        <p>想要出售{{ item_name }}的訂單，最低價格在上方</p>
+                    </div>
+                </div>
+                <div class="alert alert-info mt-3">
+                    <p class="mb-0"><strong>提示：</strong>您可以點擊訂單接受交易，或是提交自己的買賣單等待他人接受。</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert alert-primary mt-4">
+            <h5>成功策略提示</h5>
+            <p>在{{ item_name }}交易中，注意觀察市場價格趨勢，在價格低時買入，價格高時賣出，可以獲得較好的收益。記住要保持一定的現金流動性以應對交易機會。</p>
+        </div>
+    </div>
+</div>
+
+<div class="text-center mt-4">
+    <p class="text-muted">準備好開始交易了嗎？</p>
+    {{ next_button }}
+</div>
+
+{% endblock %}

@@ -1,0 +1,139 @@
+{% extends 'global/Page.html' %}
+{% load otree static %}
+
+{% block title %}實驗介紹 - 碳稅組{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-warning text-dark">
+        <h2>碳稅實驗規則說明</h2>
+    </div>
+    <div class="card-body">
+        <p class="lead">歡迎參加本次碳市場實驗！</p>
+
+        <div class="alert alert-warning">
+            <h4>您已被分配到：<strong>碳稅組</strong></h4>
+            <p>在此組中，您可以直接決定生產量，但需要為每單位碳排放繳納碳稅。</p>
+        </div>
+
+        <div class="card bg-light mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h4>實驗流程</h4>
+            </div>
+            <div class="card-body">
+                <ol class="list-group list-group-numbered">
+                    <li class="list-group-item d-flex">
+                        <span class="badge badge-warning mr-3">1</span>
+                        <div>
+                            <strong>生產決策階段</strong>
+                            <p class="text-muted mb-0">自由決定您的生產量</p>
+                        </div>
+                    </li>
+                    <li class="list-group-item d-flex">
+                        <span class="badge badge-warning mr-3">2</span>
+                        <div>
+                            <strong>自動計算碳稅</strong>
+                            <p class="text-muted mb-0">系統自動計算並扣除碳稅</p>
+                        </div>
+                    </li>
+                    <li class="list-group-item d-flex">
+                        <span class="badge badge-warning mr-3">3</span>
+                        <div>
+                            <strong>結果查看</strong>
+                            <p class="text-muted mb-0">查看本輪的利潤和碳稅繳納情況</p>
+                        </div>
+                    </li>
+                    <li class="list-group-item d-flex">
+                        <span class="badge badge-warning mr-3">4</span>
+                        <div>
+                            <strong>進入下一輪</strong>
+                            <p class="text-muted mb-0">重複以上步驟直至實驗結束</p>
+                        </div>
+                    </li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-success text-white">
+                        <h5>實驗目標</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled">
+                            <li>✓ 考慮碳稅成本決定生產量</li>
+                            <li>✓ 平衡產量與環境成本</li>
+                            <li>✓ 最大化扣除碳稅後的利潤</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-danger text-white">
+                        <h5>重要提醒</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled">
+                            <li>! 每單位排放需繳納碳稅</li>
+                            <li>! 無生產量上限</li>
+                            <li>! 碳稅會直接影響您的利潤</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <h4>基本實驗資訊</h4>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>實驗輪數</span>
+                    <span class="badge badge-primary badge-pill">{{ num_rounds }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>初始資金</span>
+                    <span class="badge badge-primary badge-pill">300</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>碳稅率</span>
+                    <span class="badge badge-warning badge-pill">{% if tax_rate %}{{ tax_rate }}/單位{% else %}將於實驗中公布{% endif %}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>實驗類型</span>
+                    <span class="badge badge-warning badge-pill">碳稅</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card bg-light mt-4">
+            <div class="card-header bg-warning text-dark">
+                <h5>碳稅計算示例</h5>
+            </div>
+            <div class="card-body">
+                <p>假設您生產 10 單位產品，每單位排放 2 單位碳，碳稅率為 15 元/單位：</p>
+                <ul>
+                    <li>總碳排放：10 × 2 = 20 單位</li>
+                    <li>碳稅支出：20 × 15 = 300 元</li>
+                    <li>利潤 = 收入 - 生產成本 - 碳稅</li>
+                </ul>
+                <div class="alert alert-info mt-3">
+                    <p class="mb-0"><strong>說明：</strong>實際實驗中的碳稅率將由系統隨機設定，這只是一個示例。</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert alert-primary mt-4">
+            <h5>成功策略提示</h5>
+            <p>在碳稅制度下，您需要權衡生產收益與碳稅成本。適當的生產規模能夠確保在扣除碳稅後仍有良好的利潤。</p>
+        </div>
+    </div>
+</div>
+
+<div class="text-center mt-4">
+    <p class="text-muted">準備好開始實驗了嗎？</p>
+    {{ next_button }}
+</div>
+
+{% endblock %}

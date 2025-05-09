@@ -1,0 +1,196 @@
+{% extends "global/Page.html" %}
+{% load static %}
+
+{% block title %}生產決策{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h2>生產決策</h2>
+        </div>
+        <div class="card-body">
+            <!-- 處理組別指示 -->
+            <div class="alert 
+                {% if treatment == 'trading' %}alert-info{% elif treatment == 'tax' %}alert-warning{% else %}alert-success{% endif %}">
+                <h4>
+                    您屬於 <strong>{{ treatment_text }} 組</strong>
+                </h4>
+                
+                {% if treatment == 'trading' %}
+                    <p>您需要使用之前交易獲得的碳權進行生產，生產量不能超過碳權持有量。</p>
+                {% elif treatment == 'tax' %}
+                    <p>您可以自由決定生產量，但需要為每單位碳排放繳納 <strong>{{ tax_rate }}</strong> 元碳稅。</p>
+                {% else %}
+                    <p>您可以自由決定生產量，不受碳排放限制，也不需繳納碳稅。</p>
+                {% endif %}
+            </div>
+
+            <!-- 玩家基本信息 -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h5>您的基本資訊</h5>
+                        </div>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item"><strong>邊際成本：</strong> {{ marginal_cost }}</li>
+                            <li class="list-group-item"><strong>每單位碳排放：</strong> {{ carbon_emission_per_unit }}</li>
+                            <li class="list-group-item"><strong>市場售價：</strong> {{ market_price }}</li>
+                            <li class="list-group-item"><strong>最大生產上限：</strong> {{ max_production }} 單位</li>
+                            {% if treatment == 'trading' %}
+                                <li class="list-group-item"><strong>當前碳權持有：</strong> {{ current_permits }} 單位</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5>獲利估算</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>每單位收入：</strong> {{ unit_income }}</p>
+                            <p><strong>每單位成本：</strong> {{ unit_cost }}</p>
+                            {% if treatment == 'tax' %}
+                                <p><strong>每單位碳稅：</strong> {{ unit_tax }}</p>
+                            {% endif %}
+                            <p><strong>每單位淨利潤：</strong> {{ unit_profit }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 生產決策表單 -->
+            <form method="post" onsubmit="syncSliderValue()">
+                <div class="form-group">
+                    <label for="production" class="font-weight-bold">選擇您的生產量：
+                        <span id="production-value" class="badge badge-primary">
+                            {% if player.field_maybe_none('production') %}
+                                {{ player.production }}
+                            {% else %}
+                                0
+                            {% endif %}
+                        </span> 單位
+                    </label>
+                    
+                    <input
+                        type="range"
+                        class="form-control-range"
+                        id="production-slider"
+                        {% if max_possible_production > 0 %}name="production"{% endif %}
+                        min="0"
+                        max="{{ max_possible_production }}"
+                        step="1"
+                        value="{% if player.field_maybe_none('production') %}{{ player.production }}{% else %}0{% endif %}"
+                        {% if max_possible_production == 0 %}disabled{% endif %}
+                        oninput="updateProductionDisplay()"
+                    >
+                    
+                    <div class="d-flex justify-content-between">
+                        <span>0</span>
+                        <span>{{ max_possible_production }}</span>
+                    </div>
+
+                    {% if max_possible_production == 0 %}
+                        <!-- 當無法生產時，添加隱藏的生產量輸入欄位，值為0 -->
+                        <input type="hidden" name="production" value="0">
+                        <div class="alert alert-danger mt-3">
+                            <i class="fa fa-exclamation-triangle"></i> 
+                            您目前沒有足夠的碳權，無法生產。您將確認0生產量。
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group mt-4 text-center">
+                    <!-- 移除按鈕的禁用條件，確保玩家始終可以提交表單 -->
+                    <button class="btn btn-primary btn-lg" type="submit">
+                        確認生產量
+                    </button>
+                </div>
+            </form>
+
+            <div class="alert alert-secondary mt-4">
+                <h5>利潤預估：</h5>
+                <div id="profit-estimate">
+                    <ul>
+                        <li>總收入：<span id="total-revenue">0</span> = <span id="display-quantity">0</span> × {{ unit_income }}</li>
+                        <li>總成本：<span id="total-cost">0</span> = <span id="display-quantity2">0</span> × {{ unit_cost }}</li>
+                        {% if treatment == 'tax' %}
+                            <li>碳稅：<span id="total-tax">0</span> = <span id="display-quantity3">0</span> × {{ carbon_emission_per_unit }} × {{ tax_rate }}</li>
+                        {% endif %}
+                        <li>預估淨利潤：<strong id="net-profit" class="">0</strong></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 更新生產量顯示
+function updateProductionDisplay() {
+    const qty = parseInt(document.getElementById('production-slider').value);
+    document.getElementById('production-value').innerText = qty;
+    
+    // 更新利潤預估
+    updateProfitEstimate(qty);
+}
+
+// 更新利潤預估顯示
+function updateProfitEstimate(qty) {
+    // 基本參數
+    const unitIncome = {{ unit_income }};
+    const unitCost = {{ unit_cost }};
+    const emissionRate = {{ carbon_emission_per_unit }};
+    {% if treatment == 'tax' %}
+        const taxRate = {{ tax_rate }};
+        const unitTax = emissionRate * taxRate;
+    {% else %}
+        const taxRate = 0;
+        const unitTax = 0;
+    {% endif %}
+    
+    // 計算各項費用
+    const totalRevenue = qty * unitIncome;
+    const totalCost = qty * unitCost;
+    const totalTax = qty * unitTax;
+    const netProfit = totalRevenue - totalCost - totalTax;
+    
+    // 更新顯示
+    document.getElementById('display-quantity').innerText = qty;
+    document.getElementById('display-quantity2').innerText = qty;
+    document.getElementById('total-revenue').innerText = totalRevenue;
+    document.getElementById('total-cost').innerText = totalCost;
+    
+    {% if treatment == 'tax' %}
+        document.getElementById('display-quantity3').innerText = qty;
+        document.getElementById('total-tax').innerText = totalTax;
+    {% endif %}
+    
+    const profitElement = document.getElementById('net-profit');
+    profitElement.innerText = netProfit;
+    
+    // 設定顏色
+    if (netProfit > 0) {
+        profitElement.className = 'text-success';
+    } else if (netProfit < 0) {
+        profitElement.className = 'text-danger';
+    } else {
+        profitElement.className = '';
+    }
+}
+
+// 同步滑桿值到表單
+function syncSliderValue() {
+    // 如果max_possible_production > 0，則滑桿已經有name屬性
+    // 如果max_possible_production = 0，則使用隱藏輸入欄位，不需同步
+}
+
+// 初始化
+document.addEventListener('DOMContentLoaded', function() {
+    updateProductionDisplay();
+});
+</script>
+{% endblock %}

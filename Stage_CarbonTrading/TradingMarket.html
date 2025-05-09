@@ -1,0 +1,831 @@
+{% extends "global/Page.html" %}
+{% load static %}
+
+{% block title %}即時碳權交易市場{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h2>即時碳權交易市場</h2>
+        </div>
+        <div class="card-body">
+            <p id="timer" class="alert alert-warning"><b>剩餘時間：</b>
+               <span id="countdown" class="font-weight-bold">{{ timeout_seconds }}</span> 秒</p>
+            
+            <div class="alert alert-info">
+                <h5>您屬於 <strong>{{ treatment_text }} 組</strong></h5>
+                <p>您需要先交易碳權，然後再決定生產量。您的生產量將受到持有碳權數量的限制。</p>
+            </div>
+            
+            <!-- 狀態通知區域 -->
+            <div id="status-container" class="mb-3"></div>
+            <!-- 調試信息區域 -->
+            <div id="debug-info" class="mb-3 small text-muted" style="display: none;"></div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4>您的資訊</h4>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        <li class="list-group-item">現金：<b id="cash">{{ cash }}</b></li>
+                        <li class="list-group-item">碳權持有：<b id="permits">{{ permits }}</b></li>
+                        <li class="list-group-item">邊際成本：<b>{{ marginal_cost }}</b></li>
+                        <li class="list-group-item">每單位碳排放：<b>{{ carbon_emission_per_unit }}</b></li>
+                        <li class="list-group-item">市場價格：<b>{{ market_price }}</b></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4>提交掛單</h4>
+                </div>
+                <div class="card-body">
+                    <!-- 使用標準按鈕而非按鈕組 -->
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">買入／賣出：</label>
+                        <div class="col-sm-9">
+                            <div class="mb-2">
+                                <button type="button" id="buy-btn" class="btn btn-primary mr-2" onclick="selectDirection('buy'); return false;">買入</button>
+                                <button type="button" id="sell-btn" class="btn btn-outline-primary" onclick="selectDirection('sell'); return false;">賣出</button>
+                                <input type="hidden" id="selected-direction" value="buy">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">價格：<span id="price-value">50</span></label>
+                        <div class="col-sm-9">
+                            <input type="range" id="price" class="form-control-range" min="1" max="100" step="1" value="50"
+                                   oninput="updatePriceDisplay()">
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">數量：<span id="quantity-value">1</span></label>
+                        <div class="col-sm-9">
+                            <input type="range" id="quantity" class="form-control-range" min="1" max="50" step="1" value="1"
+                                   oninput="updateQuantityDisplay()">
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <div class="col-sm-12 text-center">
+                            <button type="button" id="submit-btn" class="btn btn-primary btn-lg" onclick="submitOffer(); return false;">
+                                提交掛單
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <hr>
+    
+    <div class="row mt-3">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4>買單列表</h4>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped" id="buy-offers">
+                        <thead>
+                            <tr>
+                                <th>價格</th><th>數量</th><th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 買單數據會在JS中填充 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4>賣單列表</h4>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped" id="sell-offers">
+                        <thead>
+                            <tr>
+                                <th>價格</th><th>數量</th><th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 賣單數據會在JS中填充 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-3">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-warning">
+                    <h4>獲利預估表</h4>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm" id="profit-table">
+                        <thead>
+                            <tr>
+                                <th>生產數量</th><th>獲利</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 獲利數據會在JS中填充 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 開發調試按鈕 -->
+    <div class="row mt-3" id="debug-controls" style="display: none;">
+        <div class="col-md-12">
+            <button id="debug-toggle" class="btn btn-sm btn-secondary" onclick="toggleDebug(); return false;">顯示調試信息</button>
+            <button class="btn btn-sm btn-info ml-2" onclick="forceRefresh(); return false;">強制刷新</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// 除錯模式
+const DEBUG = true;
+
+// 預防頁面跳轉標誌
+let isProcessingAction = false;
+
+// 調試函數
+function log(message) {
+    if (DEBUG) {
+        console.log(`[${new Date().toLocaleTimeString()}] ${message}`);
+        // 添加到調試區域
+        const debugInfo = document.getElementById('debug-info');
+        if (debugInfo) {
+            const entry = document.createElement('div');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            debugInfo.appendChild(entry);
+            
+            // 限制顯示的日誌數量
+            while (debugInfo.children.length > 20) {
+                debugInfo.removeChild(debugInfo.firstChild);
+            }
+            
+            // 自動滾動到底部
+            debugInfo.scrollTop = debugInfo.scrollHeight;
+        }
+    }
+}
+
+// 切換調試信息顯示
+function toggleDebug() {
+    const debugInfo = document.getElementById('debug-info');
+    const btn = document.getElementById('debug-toggle');
+    if (debugInfo.style.display === 'none') {
+        debugInfo.style.display = 'block';
+        btn.textContent = '隱藏調試信息';
+    } else {
+        debugInfo.style.display = 'none';
+        btn.textContent = '顯示調試信息';
+    }
+    // 阻止頁面跳轉
+    return false;
+}
+
+// 強制刷新
+function forceRefresh() {
+    // 防止多次點擊
+    if (isProcessingAction) return false;
+    
+    isProcessingAction = true;
+    liveSend({type: 'ping'});
+    showStatus('強制刷新中...', 'info', 2000);
+    log('發送強制刷新請求');
+    
+    // 設置超時自動重置狀態
+    setTimeout(() => {
+        isProcessingAction = false;
+    }, 3000);
+    
+    // 阻止頁面跳轉
+    return false;
+}
+
+// 取得參數
+const playerId = {{ player_id }};
+let countdown = {{ timeout_seconds }};
+const cdDisplay = document.getElementById('countdown');
+const timerEl = document.getElementById('timer');
+const statusContainer = document.getElementById('status-container');
+const submitBtn = document.getElementById('submit-btn');
+
+// 選擇買賣方向
+function selectDirection(dir) {
+    document.getElementById('selected-direction').value = dir;
+    
+    if (dir === 'buy') {
+        document.getElementById('buy-btn').className = 'btn btn-primary mr-2';
+        document.getElementById('sell-btn').className = 'btn btn-outline-primary';
+    } else {
+        document.getElementById('buy-btn').className = 'btn btn-outline-primary mr-2';
+        document.getElementById('sell-btn').className = 'btn btn-primary';
+    }
+    
+    // 阻止頁面跳轉
+    return false;
+}
+
+// 更新賣出按鈕可用性
+function updateSellButtonState() {
+    const permits = parseInt(document.getElementById('permits').innerText);
+    const sellBtn = document.getElementById('sell-btn');
+    
+    // 如果沒有碳權，禁用賣出選項
+    if (permits <= 0) {
+        sellBtn.disabled = true;
+        sellBtn.className = 'btn btn-outline-secondary';
+        
+        // 如果當前選中的是賣出，則切換到買入
+        if (document.getElementById('selected-direction').value === 'sell') {
+            selectDirection('buy');
+        }
+    } else {
+        sellBtn.disabled = false;
+        sellBtn.className = document.getElementById('selected-direction').value === 'sell' ? 
+            'btn btn-primary' : 'btn btn-outline-primary';
+    }
+}
+
+// 狀態顯示函數
+function showStatus(message, type = 'info', duration = 0) {
+    // 先清除所有現有狀態
+    statusContainer.innerHTML = '';
+    
+    // 創建新的狀態元素
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close" onclick="return false;">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    `;
+    statusContainer.appendChild(alert);
+    
+    // 如果設置了持續時間，自動關閉
+    if (duration > 0) {
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.className = alert.className.replace('show', '');
+                setTimeout(() => {
+                    if (alert.parentNode) {
+                        alert.parentNode.removeChild(alert);
+                    }
+                }, 150);
+            }
+        }, duration);
+    }
+    
+    // 記錄到控制台
+    log(`狀態通知: [${type}] ${message}`);
+}
+
+// 更新滑桿文字
+function updatePriceDisplay() {
+    document.getElementById('price-value').innerText =
+      parseInt(document.getElementById('price').value);
+}
+function updateQuantityDisplay() {
+    document.getElementById('quantity-value').innerText =
+      document.getElementById('quantity').value;
+}
+
+// 倒數計時與閃紅
+const timer = setInterval(() => {
+    if (countdown > 0) {
+        countdown -= 1;
+        cdDisplay.innerText = countdown;
+    }
+    if (countdown <= 30) {
+        timerEl.style.color = (countdown % 2 ? 'red' : 'black');
+    }
+    // 注意：不要自動提交表單，讓oTree處理
+}, 1000);
+
+// 提交掛單 (WebSocket)
+function submitOffer() {
+    // 防止多次點擊或處理中重複提交
+    if (isProcessingAction) return false;
+    
+    // 獲取選中的方向 (使用隱藏輸入)
+    const direction = document.getElementById('selected-direction').value;
+    
+    const price = parseInt(document.getElementById('price').value);
+    const quantity = parseInt(document.getElementById('quantity').value);
+    
+    // 資源檢查
+    if (direction === 'buy') {
+        const cash = parseInt(document.getElementById('cash').innerText);
+        if (cash < price * quantity) {
+            showStatus(`現金不足！需要 ${price * quantity}，但您只有 ${cash}`, 'danger', 3000);
+            return false;
+        }
+    } else if (direction === 'sell') {
+        const permits = parseInt(document.getElementById('permits').innerText);
+        if (permits < quantity) {
+            showStatus(`碳權不足！需要 ${quantity}，但您只有 ${permits}`, 'danger', 3000);
+            return false;
+        }
+    }
+    
+    log(`提交掛單: ${direction}, 價格: ${price}, 數量: ${quantity}`);
+    
+    // 顯示處理中狀態
+    showStatus('處理掛單中...請稍候', 'info');
+    
+    // 設置處理中標誌
+    isProcessingAction = true;
+    
+    // 禁用提交按鈕防止重複提交
+    submitBtn.disabled = true;
+    
+    const data = {
+        type: 'submit_offer',
+        direction: direction,
+        price: price,
+        quantity: quantity
+    };
+    
+    // 添加一個標記，用於追蹤此次請求
+    window.lastRequestTime = new Date().getTime();
+    
+    liveSend(data);
+    
+    // 設置超時處理
+    setTimeout(() => {
+        if (submitBtn.disabled) {
+            submitBtn.disabled = false;
+            isProcessingAction = false;
+            showStatus('伺服器回應逾時，請重試', 'warning', 3000);
+            log('提交掛單超時');
+        }
+    }, 5000);
+    
+    // 阻止頁面跳轉
+    return false;
+}
+
+// 接受掛單
+function acceptOffer(type, pid, price, qty) {
+    // 防止多次點擊或處理中重複操作
+    if (isProcessingAction) return false;
+    
+    // 資源檢查
+    if (type === 'sell') {
+        const cash = parseInt(document.getElementById('cash').innerText);
+        if (cash < price * qty) {
+            showStatus(`現金不足！需要 ${price * qty}，但您只有 ${cash}`, 'danger', 3000);
+            return false;
+        }
+    } else if (type === 'buy') {
+        const permits = parseInt(document.getElementById('permits').innerText);
+        if (permits < qty) {
+            showStatus(`碳權不足！需要 ${qty}，但您只有 ${permits}`, 'danger', 3000);
+            return false;
+        }
+    }
+    
+    log(`接受掛單: ${type}, 玩家: ${pid}, 價格: ${price}, 數量: ${qty}`);
+    
+    // 顯示處理中狀態
+    showStatus('處理交易中...請稍候', 'info');
+    
+    // 設置處理中標誌
+    isProcessingAction = true;
+    
+    // 禁用按鈕
+    const buttons = document.querySelectorAll('.btn');
+    buttons.forEach(btn => btn.disabled = true);
+    
+    liveSend({
+        type: 'accept_offer',
+        offer_type: type,
+        player_id: pid,
+        price: price,
+        quantity: qty
+    });
+    
+    // 設置超時處理
+    setTimeout(() => {
+        const anyDisabled = Array.from(buttons).some(btn => btn.disabled);
+        if (anyDisabled) {
+            buttons.forEach(btn => btn.disabled = false);
+            isProcessingAction = false;
+            showStatus('伺服器回應超時，請重試', 'warning', 3000);
+            log('接受掛單超時');
+        }
+    }, 5000);
+    
+    // 阻止頁面跳轉
+    return false;
+}
+
+// 取消掛單
+function cancelOffer(dir, price, qty) {
+    // 防止多次點擊或處理中重複操作
+    if (isProcessingAction) return false;
+    
+    log(`取消掛單: ${dir}, 價格: ${price}, 數量: ${qty}`);
+    
+    // 顯示處理中狀態
+    showStatus('取消掛單中...請稍候', 'info');
+    
+    // 設置處理中標誌
+    isProcessingAction = true;
+    
+    // 禁用按鈕
+    const buttons = document.querySelectorAll('.btn');
+    buttons.forEach(btn => btn.disabled = true);
+    
+    liveSend({
+        type: 'cancel_offer',
+        direction: dir,
+        price: price,
+        quantity: qty
+    });
+    
+    // 設置超時處理
+    setTimeout(() => {
+        const anyDisabled = Array.from(buttons).some(btn => btn.disabled);
+        if (anyDisabled) {
+            buttons.forEach(btn => btn.disabled = false);
+            isProcessingAction = false;
+            showStatus('伺服器回應超時，請重試', 'warning', 3000);
+            log('取消掛單超時');
+        }
+    }, 5000);
+    
+    // 阻止頁面跳轉
+    return false;
+}
+
+// 更新畫面
+function updateMarket(data) {
+    try {
+        log(`更新市場數據: ${JSON.stringify(data)}`);
+        
+        // 啟用所有按鈕
+        document.querySelectorAll('.btn').forEach(btn => btn.disabled = false);
+        
+        // 重置處理中標誌
+        isProcessingAction = false;
+        
+        // 深度檢查數據結構
+        if (!data) {
+            throw new Error('收到空數據');
+        }
+        
+        if (typeof data.cash === 'undefined' || typeof data.permits === 'undefined') {
+            log(`數據缺少必要字段: ${JSON.stringify(data)}`);
+            showStatus('數據結構異常，重新請求數據...', 'warning', 2000);
+            // 嘗試重新獲取數據
+            setTimeout(() => liveSend({type: 'ping'}), 1000);
+            return;
+        }
+        
+        // 更新玩家資訊
+        document.getElementById('cash').innerText = data.cash;
+        document.getElementById('permits').innerText = data.permits;
+        
+        // 更新賣出按鈕狀態
+        updateSellButtonState();
+        
+        // 檢查是否有交易通知
+        if (data.notification) {
+            showStatus(data.notification.message, data.notification.type, 5000);
+        } else {
+            // 成功提示（如果沒有特定通知）
+            showStatus('更新成功', 'success', 2000);
+        }
+        
+        // 更新買單表格
+        const buyTb = document.querySelector('#buy-offers tbody');
+        buyTb.innerHTML = '';
+        if (data.buy_offers && data.buy_offers.length > 0) {
+            data.buy_offers.forEach(o => {
+                let row = document.createElement('tr');
+                
+                let cell1 = document.createElement('td');
+                // 改為整數顯示
+                cell1.textContent = parseInt(o.price);
+                row.appendChild(cell1);
+                
+                let cell2 = document.createElement('td');
+                cell2.textContent = o.quantity;
+                row.appendChild(cell2);
+                
+                let cell3 = document.createElement('td');
+                
+                // 不能接受自己的買單
+                if (o.player_id != playerId) {
+                    let acceptBtn = document.createElement('button');
+                    acceptBtn.className = 'btn btn-success btn-sm';
+                    acceptBtn.textContent = '接受';
+                    acceptBtn.onclick = function(event) {
+                        event.preventDefault();
+                        acceptOffer('buy', o.player_id, o.price, o.quantity);
+                        return false;
+                    };
+                    cell3.appendChild(acceptBtn);
+                }
+                
+                // 只能取消自己的買單
+                if (o.player_id == playerId) {
+                    let cancelBtn = document.createElement('button');
+                    cancelBtn.className = 'btn btn-danger btn-sm ml-2';
+                    cancelBtn.textContent = '取消';
+                    cancelBtn.onclick = function(event) {
+                        event.preventDefault();
+                        cancelOffer('buy', o.price, o.quantity);
+                        return false;
+                    };
+                    cell3.appendChild(cancelBtn);
+                }
+                
+                row.appendChild(cell3);
+                buyTb.appendChild(row);
+            });
+        } else {
+            let row = document.createElement('tr');
+            let cell = document.createElement('td');
+            cell.colSpan = 3; // 修改為3列
+            cell.textContent = '目前沒有買單';
+            cell.className = 'text-center';
+            row.appendChild(cell);
+            buyTb.appendChild(row);
+        }
+        
+        // 更新賣單表格
+        const sellTb = document.querySelector('#sell-offers tbody');
+        sellTb.innerHTML = '';
+        if (data.sell_offers && data.sell_offers.length > 0) {
+            data.sell_offers.forEach(o => {
+                let row = document.createElement('tr');
+                
+                let cell1 = document.createElement('td');
+                // 改為整數顯示
+                cell1.textContent = parseInt(o.price);
+                row.appendChild(cell1);
+                
+                let cell2 = document.createElement('td');
+                cell2.textContent = o.quantity;
+                row.appendChild(cell2);
+                
+                let cell3 = document.createElement('td');
+                
+                // 不能接受自己的賣單
+                if (o.player_id != playerId) {
+                    let acceptBtn = document.createElement('button');
+                    acceptBtn.className = 'btn btn-success btn-sm';
+                    acceptBtn.textContent = '接受';
+                    acceptBtn.onclick = function(event) {
+                        event.preventDefault();
+                        acceptOffer('sell', o.player_id, o.price, o.quantity);
+                        return false;
+                    };
+                    cell3.appendChild(acceptBtn);
+                }
+                
+                // 只能取消自己的賣單
+                if (o.player_id == playerId) {
+                    let cancelBtn = document.createElement('button');
+                    cancelBtn.className = 'btn btn-danger btn-sm ml-2';
+                    cancelBtn.textContent = '取消';
+                    cancelBtn.onclick = function(event) {
+                        event.preventDefault();
+                        cancelOffer('sell', o.price, o.quantity);
+                        return false;
+                    };
+                    cell3.appendChild(cancelBtn);
+                }
+                
+                row.appendChild(cell3);
+                sellTb.appendChild(row);
+            });
+        } else {
+            let row = document.createElement('tr');
+            let cell = document.createElement('td');
+            cell.colSpan = 3; // 修改為3列
+            cell.textContent = '目前沒有賣單';
+            cell.className = 'text-center';
+            row.appendChild(cell);
+            sellTb.appendChild(row);
+        }
+        
+        // 更新獲利預估表
+        const profitTb = document.querySelector('#profit-table tbody');
+        profitTb.innerHTML = '';
+        if (data.profit_table && data.profit_table.length > 0) {
+            data.profit_table.forEach(item => {
+                let row = document.createElement('tr');
+                
+                let cell1 = document.createElement('td');
+                cell1.textContent = item.quantity;
+                row.appendChild(cell1);
+                
+                let cell2 = document.createElement('td');
+                cell2.textContent = item.profit;
+                if (item.profit > 0) {
+                    cell2.className = 'text-success';
+                } else if (item.profit < 0) {
+                    cell2.className = 'text-danger';
+                }
+                row.appendChild(cell2);
+                
+                profitTb.appendChild(row);
+            });
+        }
+    } catch (error) {
+        log(`更新市場時發生錯誤: ${error.message}`);
+        showStatus(`更新失敗: ${error.message}`, 'danger', 5000);
+        // 重置處理中標誌
+        isProcessingAction = false;
+    }
+}
+
+// 頁面首次載入時主動請求數據
+window.addEventListener('load', function(event) {
+    event.preventDefault();
+    log('頁面載入，發送ping請求');
+    liveSend({type: 'ping'});
+    
+    // 更新賣出按鈕狀態
+    updateSellButtonState();
+    
+    // 如果處於調試模式，顯示調試控制區
+    if (DEBUG) {
+        document.getElementById('debug-controls').style.display = 'flex';
+    }
+    
+    // 阻止表單提交和頁面跳轉
+    return false;
+});
+
+// 統一處理oTree回應的中間函數
+function processOtreeResponse(data) {
+    try {
+        log(`處理oTree回應數據: ${JSON.stringify(data).substring(0, 500)}...`);
+        
+        // 多重嘗試獲取有效數據
+        let playerData = null;
+        
+        // 方法1: 直接使用playerId查找
+        if (data && typeof data === 'object' && data[playerId]) {
+            playerData = data[playerId];
+            log('方法1成功: 使用playerId直接找到數據');
+        }
+        // 方法2: 數據本身就是我們需要的
+        else if (data && typeof data === 'object' && data.type === 'update') {
+            playerData = data;
+            log('方法2成功: 數據本身就是更新數據');
+        }
+        // 方法3: 遍歷頂層鍵查找
+        else if (data && typeof data === 'object') {
+            for (const key in data) {
+                if (data[key] && typeof data[key] === 'object' && data[key].type) {
+                    playerData = data[key];
+                    log(`方法3成功: 從鍵 ${key} 找到數據`);
+                    break;
+                }
+            }
+            
+            // 方法4: 深度搜索 (但只搜索第一層)
+            if (!playerData) {
+                for (const key in data) {
+                    const value = data[key];
+                    if (value && typeof value === 'object') {
+                        for (const subKey in value) {
+                            if (value[subKey] && typeof value[subKey] === 'object' && value[subKey].type) {
+                                playerData = value[subKey];
+                                log(`方法4成功: 從嵌套路徑 ${key}.${subKey} 找到數據`);
+                                break;
+                            }
+                        }
+                        if (playerData) break;
+                    }
+                }
+            }
+        }
+        
+        if (playerData) {
+            if (playerData.type === 'update') {
+                updateMarket(playerData);
+                return true;
+            } else if (playerData.type === 'fail') {
+                showStatus(`操作失敗: ${playerData.message || '未知錯誤'}`, 'danger', 5000);
+                // 重置處理中標誌
+                isProcessingAction = false;
+                return true;
+            }
+        }
+        
+        log(`無法從回應提取有效數據: ${JSON.stringify(data).substring(0, 100)}...`);
+        return false;
+    } catch (error) {
+        log(`處理oTree回應時發生錯誤: ${error.message}\n${error.stack}`);
+        // 重置處理中標誌
+        isProcessingAction = false;
+        return false;
+    }
+}
+
+// 接收後端 - 完全重寫版本
+window.liveRecv = function(data) {
+    try {
+        log(`接收原始數據: ${JSON.stringify(data).substring(0, 500)}...`);
+        
+        // 清除處理中狀態
+        document.querySelectorAll('.btn').forEach(btn => btn.disabled = false);
+        
+        // 嘗試解析並處理數據
+        const success = processOtreeResponse(data);
+        
+        // 如果處理失敗，嘗試一次強制刷新
+        if (!success) {
+            log('處理失敗，嘗試自動重新請求數據');
+            showStatus('數據處理失敗，嘗試重新獲取...', 'warning', 2000);
+            setTimeout(() => liveSend({type: 'ping'}), 1000);
+        }
+    } catch (error) {
+        log(`接收數據時發生錯誤: ${error.message}\n${error.stack}`);
+        showStatus(`數據處理錯誤: ${error.message}`, 'danger', 5000);
+        document.querySelectorAll('.btn').forEach(btn => btn.disabled = false);
+        
+        // 重置處理中標誌
+        isProcessingAction = false;
+        
+        // 嘗試恢復連接
+        setTimeout(() => liveSend({type: 'ping'}), 2000);
+    }
+    
+    // 阻止事件冒泡和默認行為
+    return false;
+};
+
+// 定時 ping，確保連接保持活躍 (每15秒)
+setInterval(() => {
+    if (!isProcessingAction) {
+        log('定時ping');
+        liveSend({type: 'ping'});
+    }
+}, 15000);
+
+// 防止表單提交事件
+document.addEventListener('submit', function(event) {
+    // 防止所有表單提交
+    event.preventDefault();
+    log('阻止了表單提交');
+    return false;
+});
+
+// 阻止頁面上的所有連結默認行為
+document.addEventListener('click', function(event) {
+    // 檢查是否點擊了連結
+    if (event.target.tagName === 'A' || event.target.parentElement.tagName === 'A') {
+        // 檢查是否是特殊連結（例如管理員連結）
+        const href = event.target.href || event.target.parentElement.href;
+        if (href && !href.includes('/admin/') && !href.includes('/logout/')) {
+            log('阻止了連結點擊: ' + href);
+            event.preventDefault();
+            return false;
+        }
+    }
+});
+
+// 頁面離開前確認（防止意外離開）
+window.addEventListener('beforeunload', function(e) {
+    // 如果正在交易中，顯示確認信息
+    if (isProcessingAction) {
+        const confirmationMessage = '操作正在處理中，確定要離開嗎？';
+        e.returnValue = confirmationMessage;
+        return confirmationMessage;
+    }
+});
+</script>
+{% endblock %}

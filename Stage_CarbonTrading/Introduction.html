@@ -1,0 +1,118 @@
+{% extends 'global/Page.html' %}
+{% load otree static %}
+
+{% block title %}實驗介紹 - 碳交易組{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-info text-white">
+        <h2><i class="fas fa-exchange-alt"></i> 碳交易實驗規則說明</h2>
+    </div>
+    <div class="card-body">
+        <p class="lead">歡迎參加本次碳市場實驗！</p>
+
+        <div class="alert alert-info">
+            <h4><i class="fas fa-users"></i> 您已被分配到：<strong>碳交易組</strong></h4>
+            <p>在此組中，您需要先進行碳權交易，然後再決定生產量。您的生產量將受到持有碳權數量的限制。</p>
+        </div>
+
+        <div class="card bg-light mb-4">
+            <div class="card-header bg-info text-white">
+                <h4><i class="fas fa-route"></i> 實驗流程</h4>
+            </div>
+            <div class="card-body">
+                <ol class="list-group list-group-numbered">
+                    <li class="list-group-item d-flex">
+                        <span class="badge badge-info mr-3">1</span>
+                        <div>
+                            <strong>碳權交易階段</strong>
+                            <p class="text-muted mb-0">與其他參與者進行即時碳權買賣交易</p>
+                        </div>
+                    </li>
+                    <li class="list-group-item d-flex">
+                        <span class="badge badge-info mr-3">2</span>
+                        <div>
+                            <strong>生產決策階段</strong>
+                            <p class="text-muted mb-0">根據持有的碳權決定生產量</p>
+                        </div>
+                    </li>
+                    <li class="list-group-item d-flex">
+                        <span class="badge badge-info mr-3">3</span>
+                        <div>
+                            <strong>結果查看</strong>
+                            <p class="text-muted mb-0">查看本輪的利潤和碳權使用情況</p>
+                        </div>
+                    </li>
+                    <li class="list-group-item d-flex">
+                        <span class="badge badge-info mr-3">4</span>
+                        <div>
+                            <strong>進入下一輪</strong>
+                            <p class="text-muted mb-0">重複以上步驟直至實驗結束</p>
+                        </div>
+                    </li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-success text-white">
+                        <h5><i class="fas fa-chart-line"></i> 實驗目標</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success"></i> 透過交易獲得所需碳權</li>
+                            <li><i class="fas fa-check text-success"></i> 合理安排生產量</li>
+                            <li><i class="fas fa-check text-success"></i> 最大化您的利潤</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-warning text-dark">
+                        <h5><i class="fas fa-exclamation-triangle"></i> 重要提醒</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-info-circle text-warning"></i> 生產量不能超過碳權持有量</li>
+                            <li><i class="fas fa-info-circle text-warning"></i> 交易會影響您的現金和碳權</li>
+                            <li><i class="fas fa-info-circle text-warning"></i> 請謹慎計算成本效益</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <h4><i class="fas fa-book"></i> 基本實驗資訊</h4>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>實驗輪數</span>
+                    <span class="badge badge-primary badge-pill">{{ num_rounds }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>初始資金</span>
+                    <span class="badge badge-primary badge-pill">300</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>實驗類型</span>
+                    <span class="badge badge-info badge-pill">碳權交易</span>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="alert alert-primary mt-4">
+            <h5><i class="fas fa-lightbulb"></i> 成功策略提示</h5>
+            <p>在碳權交易中，您需要權衡交易成本與生產利潤。合理的碳權價格和適當的生產規模能夠幫助您獲得最大收益。</p>
+        </div>
+    </div>
+</div>
+
+<div class="text-center mt-4">
+    <p class="text-muted">準備好開始實驗了嗎？</p>
+    {{ next_button }}
+</div>
+
+{% endblock %}

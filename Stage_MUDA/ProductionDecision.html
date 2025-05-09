@@ -1,0 +1,744 @@
+{% extends "global/Page.html" %}
+{% load static %}
+
+{% block title %}{{ item_name }}交易市場{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h2>{{ item_name }}交易市場</h2>
+        </div>
+        <div class="card-body">
+            <p id="timer" class="alert alert-warning"><b>剩餘時間：</b>
+               <span id="countdown" class="font-weight-bold">{{ timeout_seconds }}</span> 秒</p>
+            
+            <div class="alert alert-info">
+                <h5>歡迎來到交易市場</h5>
+                <p>您可以在此買賣{{ item_name }}。請注意觀察價格變化，制定最佳交易策略！</p>
+            </div>
+            
+            <!-- 狀態通知區域 -->
+            <div id="status-container" class="mb-3"></div>
+            <!-- 調試信息區域 -->
+            <div id="debug-info" class="mb-3 small text-muted" style="display: none;"></div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h4>您的資訊</h4>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>現金：</span>
+                            <span class="badge badge-success badge-pill" id="cash">{{ cash }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>{{ item_name }}持有：</span>
+                            <span class="badge badge-primary badge-pill" id="items">{{ items }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h4>提交買賣單</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label class="font-weight-bold">買入／賣出：</label>
+                                <div class="btn-group btn-group-toggle d-block" data-toggle="buttons">
+                                    <button type="button" id="buy-btn" class="btn btn-success" onclick="selectDirection('buy'); return false;">
+                                        買入{{ item_name }}
+                                    </button>
+                                    <button type="button" id="sell-btn" class="btn btn-outline-danger" onclick="selectDirection('sell'); return false;">
+                                        賣出{{ item_name }}
+                                    </button>
+                                    <input type="hidden" id="selected-direction" value="buy">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="font-weight-bold">價格：<span id="price-value" class="badge badge-secondary ml-2">50</span></label>
+                        <input type="range" id="price" class="form-control-range" min="1" max="100" step="1" value="50"
+                               oninput="updatePriceDisplay()">
+                        <div class="d-flex justify-content-between small text-muted">
+                            <span>1</span>
+                            <span>100</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="font-weight-bold">數量：<span id="quantity-value" class="badge badge-secondary ml-2">1</span></label>
+                        <input type="range" id="quantity" class="form-control-range" min="1" max="50" step="1" value="1"
+                               oninput="updateQuantityDisplay()">
+                        <div class="d-flex justify-content-between small text-muted">
+                            <span>1</span>
+                            <span>50</span>
+                        </div>
+                    </div>
+
+                    <div class="text-center">
+                        <button type="button" id="submit-btn" class="btn btn-primary btn-lg" onclick="submitOffer(); return false;">
+                            提交買賣單
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <hr class="my-4">
+    
+    <div class="row mt-3">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4>買單列表</h4>
+                    <small class="text-white-50">想要購買{{ item_name }}的訂單</small>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover" id="buy-offers">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>價格</th>
+                                    <th>數量</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 買單數據會在JS中填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4>賣單列表</h4>
+                    <small class="text-white-50">想要出售{{ item_name }}的訂單</small>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover" id="sell-offers">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>價格</th>
+                                    <th>數量</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 賣單數據會在JS中填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 調試控制 -->
+    <div class="row mt-3" id="debug-controls" style="display: none;">
+        <div class="col-md-12">
+            <button id="debug-toggle" class="btn btn-sm btn-secondary" onclick="toggleDebug(); return false;">顯示調試信息</button>
+            <button class="btn btn-sm btn-info ml-2" onclick="forceRefresh(); return false;">強制刷新</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// 除錯模式
+const DEBUG = true;
+
+// 預防頁面跳轉標誌
+let isProcessingAction = false;
+
+// 調試函數
+function log(message) {
+    if (DEBUG) {
+        console.log(`[${new Date().toLocaleTimeString()}] ${message}`);
+        const debugInfo = document.getElementById('debug-info');
+        if (debugInfo) {
+            const entry = document.createElement('div');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            debugInfo.appendChild(entry);
+            
+            while (debugInfo.children.length > 20) {
+                debugInfo.removeChild(debugInfo.firstChild);
+            }
+            
+            debugInfo.scrollTop = debugInfo.scrollHeight;
+        }
+    }
+}
+
+// 切換調試信息顯示
+function toggleDebug() {
+    const debugInfo = document.getElementById('debug-info');
+    const btn = document.getElementById('debug-toggle');
+    if (debugInfo.style.display === 'none') {
+        debugInfo.style.display = 'block';
+        btn.textContent = '隱藏調試信息';
+    } else {
+        debugInfo.style.display = 'none';
+        btn.textContent = '顯示調試信息';
+    }
+    return false;
+}
+
+// 強制刷新
+function forceRefresh() {
+    if (isProcessingAction) return false;
+    
+    isProcessingAction = true;
+    liveSend({type: 'ping'});
+    showStatus('強制刷新中...', 'info', 2000);
+    log('發送強制刷新請求');
+    
+    setTimeout(() => {
+        isProcessingAction = false;
+    }, 3000);
+    
+    return false;
+}
+
+// 取得參數
+const playerId = {{ player_id }};
+let countdown = {{ timeout_seconds }};
+const cdDisplay = document.getElementById('countdown');
+const timerEl = document.getElementById('timer');
+const statusContainer = document.getElementById('status-container');
+const submitBtn = document.getElementById('submit-btn');
+
+// 選擇買賣方向
+function selectDirection(dir) {
+    document.getElementById('selected-direction').value = dir;
+    
+    if (dir === 'buy') {
+        document.getElementById('buy-btn').className = 'btn btn-success';
+        document.getElementById('sell-btn').className = 'btn btn-outline-danger';
+    } else {
+        document.getElementById('buy-btn').className = 'btn btn-outline-success';
+        document.getElementById('sell-btn').className = 'btn btn-danger';
+    }
+    
+    return false;
+}
+
+// 更新賣出按鈕可用性
+function updateSellButtonState() {
+    const items = parseInt(document.getElementById('items').innerText);
+    const sellBtn = document.getElementById('sell-btn');
+    
+    if (items <= 0) {
+        sellBtn.disabled = true;
+        sellBtn.className = 'btn btn-outline-secondary';
+        
+        if (document.getElementById('selected-direction').value === 'sell') {
+            selectDirection('buy');
+        }
+    } else {
+        sellBtn.disabled = false;
+        sellBtn.className = document.getElementById('selected-direction').value === 'sell' ? 
+            'btn btn-danger' : 'btn btn-outline-danger';
+    }
+}
+
+// 狀態顯示函數
+function showStatus(message, type = 'info', duration = 0) {
+    statusContainer.innerHTML = '';
+    
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close" onclick="return false;">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    `;
+    statusContainer.appendChild(alert);
+    
+    if (duration > 0) {
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.className = alert.className.replace('show', '');
+                setTimeout(() => {
+                    if (alert.parentNode) {
+                        alert.parentNode.removeChild(alert);
+                    }
+                }, 150);
+            }
+        }, duration);
+    }
+    
+    log(`狀態通知: [${type}] ${message}`);
+}
+
+// 更新滑桿文字
+function updatePriceDisplay() {
+    document.getElementById('price-value').innerText =
+      parseInt(document.getElementById('price').value);
+}
+function updateQuantityDisplay() {
+    document.getElementById('quantity-value').innerText =
+      document.getElementById('quantity').value;
+}
+
+// 倒數計時與閃紅
+const timer = setInterval(() => {
+    if (countdown > 0) {
+        countdown -= 1;
+        cdDisplay.innerText = countdown;
+    }
+    if (countdown <= 30) {
+        timerEl.style.color = (countdown % 2 ? 'red' : 'black');
+    }
+}, 1000);
+
+// 提交買賣單
+function submitOffer() {
+    if (isProcessingAction) return false;
+    
+    const direction = document.getElementById('selected-direction').value;
+    const price = parseInt(document.getElementById('price').value);
+    const quantity = parseInt(document.getElementById('quantity').value);
+    
+    // 資源檢查
+    if (direction === 'buy') {
+        const cash = parseInt(document.getElementById('cash').innerText);
+        if (cash < price * quantity) {
+            showStatus(`現金不足！需要 ${price * quantity}，但您只有 ${cash}`, 'danger', 3000);
+            return false;
+        }
+    } else if (direction === 'sell') {
+        const items = parseInt(document.getElementById('items').innerText);
+        if (items < quantity) {
+            showStatus(`物品不足！需要 ${quantity}，但您只有 ${items}`, 'danger', 3000);
+            return false;
+        }
+    }
+    
+    log(`提交買賣單: ${direction}, 價格: ${price}, 數量: ${quantity}`);
+    
+    showStatus('處理買賣單中...請稍候', 'info');
+    
+    isProcessingAction = true;
+    submitBtn.disabled = true;
+    
+    const data = {
+        type: 'submit_offer',
+        direction: direction,
+        price: price,
+        quantity: quantity
+    };
+    
+    window.lastRequestTime = new Date().getTime();
+    
+    liveSend(data);
+    
+    setTimeout(() => {
+        if (submitBtn.disabled) {
+            submitBtn.disabled = false;
+            isProcessingAction = false;
+            showStatus('伺服器回應逾時，請重試', 'warning', 3000);
+            log('提交買賣單超時');
+        }
+    }, 5000);
+    
+    return false;
+}
+
+// 接受買賣單
+function acceptOffer(type, pid, price, qty) {
+    if (isProcessingAction) return false;
+    
+    // 資源檢查
+    if (type === 'sell') {
+        const cash = parseInt(document.getElementById('cash').innerText);
+        if (cash < price * qty) {
+            showStatus(`現金不足！需要 ${price * qty}，但您只有 ${cash}`, 'danger', 3000);
+            return false;
+        }
+    } else if (type === 'buy') {
+        const items = parseInt(document.getElementById('items').innerText);
+        if (items < qty) {
+            showStatus(`物品不足！需要 ${qty}，但您只有 ${items}`, 'danger', 3000);
+            return false;
+        }
+    }
+    
+    log(`接受買賣單: ${type}, 玩家: ${pid}, 價格: ${price}, 數量: ${qty}`);
+    
+    showStatus('處理交易中...請稍候', 'info');
+    
+    isProcessingAction = true;
+    
+    const buttons = document.querySelectorAll('.btn');
+    buttons.forEach(btn => btn.disabled = true);
+    
+    liveSend({
+        type: 'accept_offer',
+        offer_type: type,
+        player_id: pid,
+        price: price,
+        quantity: qty
+    });
+    
+    setTimeout(() => {
+        const anyDisabled = Array.from(buttons).some(btn => btn.disabled);
+        if (anyDisabled) {
+            buttons.forEach(btn => btn.disabled = false);
+            isProcessingAction = false;
+            showStatus('伺服器回應超時，請重試', 'warning', 3000);
+            log('接受買賣單超時');
+        }
+    }, 5000);
+    
+    return false;
+}
+
+// 取消買賣單
+function cancelOffer(dir, price, qty) {
+    if (isProcessingAction) return false;
+    
+    log(`取消買賣單: ${dir}, 價格: ${price}, 數量: ${qty}`);
+    
+    showStatus('取消買賣單中...請稍候', 'info');
+    
+    isProcessingAction = true;
+    
+    const buttons = document.querySelectorAll('.btn');
+    buttons.forEach(btn => btn.disabled = true);
+    
+    liveSend({
+        type: 'cancel_offer',
+        direction: dir,
+        price: price,
+        quantity: qty
+    });
+    
+    setTimeout(() => {
+        const anyDisabled = Array.from(buttons).some(btn => btn.disabled);
+        if (anyDisabled) {
+            buttons.forEach(btn => btn.disabled = false);
+            isProcessingAction = false;
+            showStatus('伺服器回應超時，請重試', 'warning', 3000);
+            log('取消買賣單超時');
+        }
+    }, 5000);
+    
+    return false;
+}
+
+// 更新市場狀態
+function updateMarket(data) {
+    try {
+        log(`更新市場數據: ${JSON.stringify(data)}`);
+        
+        document.querySelectorAll('.btn').forEach(btn => btn.disabled = false);
+        
+        isProcessingAction = false;
+        
+        if (!data) {
+            throw new Error('收到空數據');
+        }
+        
+        if (typeof data.cash === 'undefined' || typeof data.items === 'undefined') {
+            log(`數據缺少必要字段: ${JSON.stringify(data)}`);
+            showStatus('數據結構異常，重新請求數據...', 'warning', 2000);
+            setTimeout(() => liveSend({type: 'ping'}), 1000);
+            return;
+        }
+        
+        // 更新玩家資訊
+        document.getElementById('cash').innerText = data.cash;
+        document.getElementById('items').innerText = data.items;
+        
+        // 更新賣出按鈕狀態
+        updateSellButtonState();
+        
+        // 檢查是否有交易通知
+        if (data.notification) {
+            showStatus(data.notification.message, data.notification.type, 5000);
+        } else {
+            showStatus('更新成功', 'success', 2000);
+        }
+        
+        // 更新買單表格
+        const buyTb = document.querySelector('#buy-offers tbody');
+        buyTb.innerHTML = '';
+        if (data.buy_offers && data.buy_offers.length > 0) {
+            data.buy_offers.forEach(o => {
+                let row = document.createElement('tr');
+                
+                let cell1 = document.createElement('td');
+                cell1.textContent = parseInt(o.price);
+                cell1.className = 'text-success font-weight-bold';
+                row.appendChild(cell1);
+                
+                let cell2 = document.createElement('td');
+                cell2.textContent = o.quantity;
+                row.appendChild(cell2);
+                
+                let cell3 = document.createElement('td');
+                
+                // 不能接受自己的買單
+                if (o.player_id != playerId) {
+                    let acceptBtn = document.createElement('button');
+                    acceptBtn.className = 'btn btn-success btn-sm';
+                    acceptBtn.innerHTML = '接受';
+                    acceptBtn.onclick = function(event) {
+                        event.preventDefault();
+                        acceptOffer('buy', o.player_id, o.price, o.quantity);
+                        return false;
+                    };
+                    cell3.appendChild(acceptBtn);
+                }
+                
+                // 只能取消自己的買單
+                if (o.player_id == playerId) {
+                    let cancelBtn = document.createElement('button');
+                    cancelBtn.className = 'btn btn-danger btn-sm ml-2';
+                    cancelBtn.innerHTML = '取消';
+                    cancelBtn.onclick = function(event) {
+                        event.preventDefault();
+                        cancelOffer('buy', o.price, o.quantity);
+                        return false;
+                    };
+                    cell3.appendChild(cancelBtn);
+                }
+                
+                row.appendChild(cell3);
+                buyTb.appendChild(row);
+            });
+        } else {
+            let row = document.createElement('tr');
+            let cell = document.createElement('td');
+            cell.colSpan = 3;
+            cell.textContent = '目前沒有買單';
+            cell.className = 'text-center text-muted';
+            row.appendChild(cell);
+            buyTb.appendChild(row);
+        }
+        
+        // 更新賣單表格
+        const sellTb = document.querySelector('#sell-offers tbody');
+        sellTb.innerHTML = '';
+        if (data.sell_offers && data.sell_offers.length > 0) {
+            data.sell_offers.forEach(o => {
+                let row = document.createElement('tr');
+                
+                let cell1 = document.createElement('td');
+                cell1.textContent = parseInt(o.price);
+                cell1.className = 'text-danger font-weight-bold';
+                row.appendChild(cell1);
+                
+                let cell2 = document.createElement('td');
+                cell2.textContent = o.quantity;
+                row.appendChild(cell2);
+                
+                let cell3 = document.createElement('td');
+                
+                // 不能接受自己的賣單
+                if (o.player_id != playerId) {
+                    let acceptBtn = document.createElement('button');
+                    acceptBtn.className = 'btn btn-success btn-sm';
+                    acceptBtn.innerHTML = '接受';
+                    acceptBtn.onclick = function(event) {
+                        event.preventDefault();
+                        acceptOffer('sell', o.player_id, o.price, o.quantity);
+                        return false;
+                    };
+                    cell3.appendChild(acceptBtn);
+                }
+                
+                // 只能取消自己的賣單
+                if (o.player_id == playerId) {
+                    let cancelBtn = document.createElement('button');
+                    cancelBtn.className = 'btn btn-danger btn-sm ml-2';
+                    cancelBtn.innerHTML = '取消';
+                    cancelBtn.onclick = function(event) {
+                        event.preventDefault();
+                        cancelOffer('sell', o.price, o.quantity);
+                        return false;
+                    };
+                    cell3.appendChild(cancelBtn);
+                }
+                
+                row.appendChild(cell3);
+                sellTb.appendChild(row);
+            });
+        } else {
+            let row = document.createElement('tr');
+            let cell = document.createElement('td');
+            cell.colSpan = 3;
+            cell.textContent = '目前沒有賣單';
+            cell.className = 'text-center text-muted';
+            row.appendChild(cell);
+            sellTb.appendChild(row);
+        }
+    } catch (error) {
+        log(`更新市場時發生錯誤: ${error.message}`);
+        showStatus(`更新失敗: ${error.message}`, 'danger', 5000);
+        isProcessingAction = false;
+    }
+}
+
+// 頁面首次載入時主動請求數據
+window.addEventListener('load', function(event) {
+    event.preventDefault();
+    log('頁面載入，發送ping請求');
+    liveSend({type: 'ping'});
+    
+    // 更新賣出按鈕狀態
+    updateSellButtonState();
+    
+    // 如果處於調試模式，顯示調試控制區
+    if (DEBUG) {
+        document.getElementById('debug-controls').style.display = 'flex';
+    }
+    
+    return false;
+});
+
+// 統一處理oTree回應的中間函數
+function processOtreeResponse(data) {
+    try {
+        log(`處理oTree回應數據: ${JSON.stringify(data).substring(0, 500)}...`);
+        
+        let playerData = null;
+        
+        if (data && typeof data === 'object' && data[playerId]) {
+            playerData = data[playerId];
+            log('方法1成功: 使用playerId直接找到數據');
+        }
+        else if (data && typeof data === 'object' && data.type === 'update') {
+            playerData = data;
+            log('方法2成功: 數據本身就是更新數據');
+        }
+        else if (data && typeof data === 'object') {
+            for (const key in data) {
+                if (data[key] && typeof data[key] === 'object' && data[key].type) {
+                    playerData = data[key];
+                    log(`方法3成功: 從鍵 ${key} 找到數據`);
+                    break;
+                }
+            }
+            
+            if (!playerData) {
+                for (const key in data) {
+                    const value = data[key];
+                    if (value && typeof value === 'object') {
+                        for (const subKey in value) {
+                            if (value[subKey] && typeof value[subKey] === 'object' && value[subKey].type) {
+                                playerData = value[subKey];
+                                log(`方法4成功: 從嵌套路徑 ${key}.${subKey} 找到數據`);
+                                break;
+                            }
+                        }
+                        if (playerData) break;
+                    }
+                }
+            }
+        }
+        
+        if (playerData) {
+            if (playerData.type === 'update') {
+                updateMarket(playerData);
+                return true;
+            } else if (playerData.type === 'fail') {
+                showStatus(`操作失敗: ${playerData.message || '未知錯誤'}`, 'danger', 5000);
+                isProcessingAction = false;
+                return true;
+            }
+        }
+        
+        log(`無法從回應提取有效數據: ${JSON.stringify(data).substring(0, 100)}...`);
+        return false;
+    } catch (error) {
+        log(`處理oTree回應時發生錯誤: ${error.message}\n${error.stack}`);
+        isProcessingAction = false;
+        return false;
+    }
+}
+
+// 接收後端
+window.liveRecv = function(data) {
+    try {
+        log(`接收原始數據: ${JSON.stringify(data).substring(0, 500)}...`);
+        
+        document.querySelectorAll('.btn').forEach(btn => btn.disabled = false);
+        
+        const success = processOtreeResponse(data);
+        
+        if (!success) {
+            log('處理失敗，嘗試自動重新請求數據');
+            showStatus('數據處理失敗，嘗試重新獲取...', 'warning', 2000);
+            setTimeout(() => liveSend({type: 'ping'}), 1000);
+        }
+    } catch (error) {
+        log(`接收數據時發生錯誤: ${error.message}\n${error.stack}`);
+        showStatus(`數據處理錯誤: ${error.message}`, 'danger', 5000);
+        document.querySelectorAll('.btn').forEach(btn => btn.disabled = false);
+        
+        isProcessingAction = false;
+        
+        setTimeout(() => liveSend({type: 'ping'}), 2000);
+    }
+    
+    return false;
+};
+
+// 定時 ping
+setInterval(() => {
+    if (!isProcessingAction) {
+        log('定時ping');
+        liveSend({type: 'ping'});
+    }
+}, 15000);
+
+// 防止表單提交事件
+document.addEventListener('submit', function(event) {
+    event.preventDefault();
+    log('阻止了表單提交');
+    return false;
+});
+
+// 阻止頁面上的所有連結默認行為
+document.addEventListener('click', function(event) {
+    if (event.target.tagName === 'A' || event.target.parentElement.tagName === 'A') {
+        const href = event.target.href || event.target.parentElement.href;
+        if (href && !href.includes('/admin/') && !href.includes('/logout/')) {
+            log('阻止了連結點擊: ' + href);
+            event.preventDefault();
+            return false;
+        }
+    }
+});
+
+// 頁面離開前確認
+window.addEventListener('beforeunload', function(e) {
+    if (isProcessingAction) {
+        const confirmationMessage = '操作正在處理中，確定要離開嗎？';
+        e.returnValue = confirmationMessage;
+        return confirmationMessage;
+    }
+});
+</script>
+{% endblock %}
