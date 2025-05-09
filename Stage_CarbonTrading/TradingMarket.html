@@ -18,8 +18,6 @@
                 <p>您需要先交易碳權，然後再決定生產量。您的生產量將受到持有碳權數量的限制。</p>
             </div>
             
-            <!-- 狀態通知區域 -->
-            <div id="status-container" class="mb-3"></div>
             <!-- 調試信息區域 -->
             <div id="debug-info" class="mb-3 small text-muted" style="display: none;"></div>
         </div>
@@ -35,7 +33,9 @@
                     <ul class="list-group">
                         <li class="list-group-item">現金：<b id="cash">{{ cash }}</b></li>
                         <li class="list-group-item">碳權持有：<b id="permits">{{ permits }}</b></li>
-                        <li class="list-group-item">邊際成本：<b>{{ marginal_cost }}</b></li>
+                        <li class="list-group-item">邊際成本：MC(q) = <b>{{ marginal_cost_coefficient }}</b> × q<br>
+                            <small class="text-muted">(q為生產量，邊際成本隨生產量增加而增加)</small>
+                        </li>
                         <li class="list-group-item">每單位碳排放：<b>{{ carbon_emission_per_unit }}</b></li>
                         <li class="list-group-item">市場價格：<b>{{ market_price }}</b></li>
                     </ul>
@@ -65,7 +65,7 @@
                         <label class="col-sm-3 col-form-label">價格：<span id="price-value">50</span></label>
                         <div class="col-sm-9">
                             <input type="range" id="price" class="form-control-range" min="1" max="100" step="1" value="50"
-                                   oninput="updatePriceDisplay()">
+                                   oninput="updatePriceDisplay(); updateTotalPrice();">
                         </div>
                     </div>
 
@@ -73,7 +73,17 @@
                         <label class="col-sm-3 col-form-label">數量：<span id="quantity-value">1</span></label>
                         <div class="col-sm-9">
                             <input type="range" id="quantity" class="form-control-range" min="1" max="50" step="1" value="1"
-                                   oninput="updateQuantityDisplay()">
+                                   oninput="updateQuantityDisplay(); updateTotalPrice();">
+                        </div>
+                    </div>
+
+                    <!-- 新增：總價格計算器 -->
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">總價格：</label>
+                        <div class="col-sm-9">
+                            <div class="alert alert-info mb-0">
+                                <span id="price-value-display">50</span> × <span id="quantity-value-display">1</span> = <strong id="total-price-display" class="text-success font-weight-bold">50</strong>
+                            </div>
                         </div>
                     </div>
 
@@ -91,6 +101,9 @@
     
     <hr>
     
+    <!-- 將狀態通知區域移至此處 -->
+    <div id="status-container" class="mb-3"></div>
+    
     <div class="row mt-3">
         <div class="col-md-6">
             <div class="card">
@@ -101,7 +114,7 @@
                     <table class="table table-striped" id="buy-offers">
                         <thead>
                             <tr>
-                                <th>價格</th><th>數量</th><th>操作</th>
+                                <th>單價</th><th>總價格</th><th>數量</th><th>操作</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -121,7 +134,7 @@
                     <table class="table table-striped" id="sell-offers">
                         <thead>
                             <tr>
-                                <th>價格</th><th>數量</th><th>操作</th>
+                                <th>單價</th><th>總價格</th><th>數量</th><th>操作</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -143,7 +156,7 @@
                     <table class="table table-sm" id="profit-table">
                         <thead>
                             <tr>
-                                <th>生產數量</th><th>獲利</th>
+                                <th>生產數量 (q)</th><th>邊際成本 (MC)</th><th>預估淨利潤</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -247,6 +260,9 @@ function selectDirection(dir) {
         document.getElementById('sell-btn').className = 'btn btn-primary';
     }
     
+    // 更新總價格顏色
+    updateTotalPrice();
+    
     // 阻止頁面跳轉
     return false;
 }
@@ -292,12 +308,16 @@ function showStatus(message, type = 'info', duration = 0) {
     if (duration > 0) {
         setTimeout(() => {
             if (alert.parentNode) {
-                alert.className = alert.className.replace('show', '');
-                setTimeout(() => {
-                    if (alert.parentNode) {
-                        alert.parentNode.removeChild(alert);
-                    }
-                }, 150);
+                try {
+                    alert.className = alert.className.replace('show', '');
+                    setTimeout(() => {
+                        if (alert.parentNode) {
+                            alert.parentNode.removeChild(alert);
+                        }
+                    }, 150);
+                } catch (e) {
+                    console.error("Error removing alert:", e);
+                }
             }
         }, duration);
     }
@@ -306,14 +326,50 @@ function showStatus(message, type = 'info', duration = 0) {
     log(`狀態通知: [${type}] ${message}`);
 }
 
-// 更新滑桿文字
-function updatePriceDisplay() {
-    document.getElementById('price-value').innerText =
-      parseInt(document.getElementById('price').value);
+// 清除所有狀態通知
+function clearAllStatus() {
+    statusContainer.innerHTML = '';
+    log('已清除所有狀態通知');
 }
+
+// 更新滑桿文字和總價格
+function updatePriceDisplay() {
+    const price = parseInt(document.getElementById('price').value);
+    document.getElementById('price-value').innerText = price;
+    document.getElementById('price-value-display').innerText = price;
+    updateTotalPrice();
+}
+
 function updateQuantityDisplay() {
-    document.getElementById('quantity-value').innerText =
-      document.getElementById('quantity').value;
+    const quantity = parseInt(document.getElementById('quantity').value);
+    document.getElementById('quantity-value').innerText = quantity;
+    document.getElementById('quantity-value-display').innerText = quantity;
+    updateTotalPrice();
+}
+
+// 新增：更新總價格
+function updateTotalPrice() {
+    const price = parseInt(document.getElementById('price').value);
+    const quantity = parseInt(document.getElementById('quantity').value);
+    const totalPrice = price * quantity;
+    
+    document.getElementById('total-price-display').innerText = totalPrice;
+    
+    // 如果總價格超過現金，則顯示警告（僅買入時）
+    const direction = document.getElementById('selected-direction').value;
+    const totalPriceDisplay = document.getElementById('total-price-display');
+    
+    if (direction === 'buy') {
+        const currentCash = parseInt(document.getElementById('cash').innerText);
+        if (totalPrice > currentCash) {
+            totalPriceDisplay.className = 'text-danger font-weight-bold';
+        } else {
+            totalPriceDisplay.className = 'text-success font-weight-bold';
+        }
+    } else {
+        // 賣出時不需要檢查現金
+        totalPriceDisplay.className = 'text-success font-weight-bold';
+    }
 }
 
 // 倒數計時與閃紅
@@ -496,6 +552,9 @@ function updateMarket(data) {
         // 重置處理中標誌
         isProcessingAction = false;
         
+        // 清除處理中的狀態通知
+        clearAllStatus();
+        
         // 深度檢查數據結構
         if (!data) {
             throw new Error('收到空數據');
@@ -513,16 +572,17 @@ function updateMarket(data) {
         document.getElementById('cash').innerText = data.cash;
         document.getElementById('permits').innerText = data.permits;
         
+        // 更新總價格顏色（當現金變化時）
+        updateTotalPrice();
+        
         // 更新賣出按鈕狀態
         updateSellButtonState();
         
         // 檢查是否有交易通知
         if (data.notification) {
             showStatus(data.notification.message, data.notification.type, 5000);
-        } else {
-            // 成功提示（如果沒有特定通知）
-            showStatus('更新成功', 'success', 2000);
         }
+        // 移除自動更新提示
         
         // 更新買單表格
         const buyTb = document.querySelector('#buy-offers tbody');
@@ -531,16 +591,25 @@ function updateMarket(data) {
             data.buy_offers.forEach(o => {
                 let row = document.createElement('tr');
                 
+                // 單價
                 let cell1 = document.createElement('td');
-                // 改為整數顯示
                 cell1.textContent = parseInt(o.price);
                 row.appendChild(cell1);
                 
+                // 總價格 (移到數量之前)
                 let cell2 = document.createElement('td');
-                cell2.textContent = o.quantity;
+                const totalPrice = o.price * o.quantity;
+                cell2.textContent = totalPrice;
+                cell2.className = 'text-primary font-weight-bold';
                 row.appendChild(cell2);
                 
+                // 數量
                 let cell3 = document.createElement('td');
+                cell3.textContent = o.quantity;
+                row.appendChild(cell3);
+                
+                // 操作
+                let cell4 = document.createElement('td');
                 
                 // 不能接受自己的買單
                 if (o.player_id != playerId) {
@@ -552,7 +621,7 @@ function updateMarket(data) {
                         acceptOffer('buy', o.player_id, o.price, o.quantity);
                         return false;
                     };
-                    cell3.appendChild(acceptBtn);
+                    cell4.appendChild(acceptBtn);
                 }
                 
                 // 只能取消自己的買單
@@ -565,16 +634,16 @@ function updateMarket(data) {
                         cancelOffer('buy', o.price, o.quantity);
                         return false;
                     };
-                    cell3.appendChild(cancelBtn);
+                    cell4.appendChild(cancelBtn);
                 }
                 
-                row.appendChild(cell3);
+                row.appendChild(cell4);
                 buyTb.appendChild(row);
             });
         } else {
             let row = document.createElement('tr');
             let cell = document.createElement('td');
-            cell.colSpan = 3; // 修改為3列
+            cell.colSpan = 4; // 保持4列
             cell.textContent = '目前沒有買單';
             cell.className = 'text-center';
             row.appendChild(cell);
@@ -588,16 +657,25 @@ function updateMarket(data) {
             data.sell_offers.forEach(o => {
                 let row = document.createElement('tr');
                 
+                // 單價
                 let cell1 = document.createElement('td');
-                // 改為整數顯示
                 cell1.textContent = parseInt(o.price);
                 row.appendChild(cell1);
                 
+                // 總價格 (移到數量之前)
                 let cell2 = document.createElement('td');
-                cell2.textContent = o.quantity;
+                const totalPrice = o.price * o.quantity;
+                cell2.textContent = totalPrice;
+                cell2.className = 'text-primary font-weight-bold';
                 row.appendChild(cell2);
                 
+                // 數量
                 let cell3 = document.createElement('td');
+                cell3.textContent = o.quantity;
+                row.appendChild(cell3);
+                
+                // 操作
+                let cell4 = document.createElement('td');
                 
                 // 不能接受自己的賣單
                 if (o.player_id != playerId) {
@@ -609,7 +687,7 @@ function updateMarket(data) {
                         acceptOffer('sell', o.player_id, o.price, o.quantity);
                         return false;
                     };
-                    cell3.appendChild(acceptBtn);
+                    cell4.appendChild(acceptBtn);
                 }
                 
                 // 只能取消自己的賣單
@@ -622,16 +700,16 @@ function updateMarket(data) {
                         cancelOffer('sell', o.price, o.quantity);
                         return false;
                     };
-                    cell3.appendChild(cancelBtn);
+                    cell4.appendChild(cancelBtn);
                 }
                 
-                row.appendChild(cell3);
+                row.appendChild(cell4);
                 sellTb.appendChild(row);
             });
         } else {
             let row = document.createElement('tr');
             let cell = document.createElement('td');
-            cell.colSpan = 3; // 修改為3列
+            cell.colSpan = 4; // 保持4列
             cell.textContent = '目前沒有賣單';
             cell.className = 'text-center';
             row.appendChild(cell);
@@ -645,18 +723,25 @@ function updateMarket(data) {
             data.profit_table.forEach(item => {
                 let row = document.createElement('tr');
                 
+                // 生產數量
                 let cell1 = document.createElement('td');
                 cell1.textContent = item.quantity;
                 row.appendChild(cell1);
                 
+                // 邊際成本
                 let cell2 = document.createElement('td');
-                cell2.textContent = item.profit;
-                if (item.profit > 0) {
-                    cell2.className = 'text-success';
-                } else if (item.profit < 0) {
-                    cell2.className = 'text-danger';
-                }
+                cell2.textContent = item.marginal_cost;
                 row.appendChild(cell2);
+                
+                // 獲利
+                let cell3 = document.createElement('td');
+                cell3.textContent = item.profit;
+                if (item.profit > 0) {
+                    cell3.className = 'text-success';
+                } else if (item.profit < 0) {
+                    cell3.className = 'text-danger';
+                }
+                row.appendChild(cell3);
                 
                 profitTb.appendChild(row);
             });
@@ -677,6 +762,9 @@ window.addEventListener('load', function(event) {
     
     // 更新賣出按鈕狀態
     updateSellButtonState();
+    
+    // 初始化總價格計算器
+    updateTotalPrice();
     
     // 如果處於調試模式，顯示調試控制區
     if (DEBUG) {
