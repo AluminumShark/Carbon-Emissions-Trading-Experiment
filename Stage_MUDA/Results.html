@@ -1,13 +1,13 @@
 {% extends 'global/Page.html' %}
 {% load otree static %}
 
-{% block title %}交易結果{% endblock %}
+{% block title %}{{ item_name }}交易結果{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="card">
         <div class="card-header bg-primary text-white">
-            <h2>本輪交易結果</h2>
+            <h2>本輪{{ item_name }}交易結果</h2>
         </div>
         <div class="card-body">
             <!-- 結果摘要 -->
@@ -22,14 +22,14 @@
                                 <div class="col-md-4 text-center">
                                     <div class="bg-light p-3 rounded">
                                         <h5>最終現金</h5>
-                                        <h2 class="text-success">{{ final_cash }}</h2>
+                                        <h2 class="text-primary">{{ final_cash }}</h2>
                                         <small class="text-muted">當前餘額</small>
                                     </div>
                                 </div>
                                 <div class="col-md-4 text-center">
                                     <div class="bg-light p-3 rounded">
                                         <h5>{{ item_name }}持有</h5>
-                                        <h2 class="text-primary">{{ current_items }}</h2>
+                                        <h2 class="text-success">{{ current_items }}</h2>
                                         <small class="text-muted">當前數量</small>
                                     </div>
                                 </div>
@@ -74,7 +74,7 @@
                                     {% if total_bought > 0 %}
                                     <tr>
                                         <td><strong>平均購買價格</strong></td>
-                                        <td class="text-right">{{ total_spent|div:total_bought|floatformat:2 }}</td>
+                                        <td class="text-right">{{ total_spent|floatformat:2|default:"0.00" }} ÷ {{ total_bought }} = {{ total_spent|div:total_bought|floatformat:2|default:"0.00" }}</td>
                                     </tr>
                                     {% endif %}
                                 </tbody>
@@ -99,7 +99,7 @@
                                     {% if total_sold > 0 %}
                                     <tr>
                                         <td><strong>平均賣出價格</strong></td>
-                                        <td class="text-right">{{ total_earned|div:total_sold|floatformat:2 }}</td>
+                                        <td class="text-right">{{ total_earned|floatformat:2|default:"0.00" }} ÷ {{ total_sold }} = {{ total_earned|div:total_sold|floatformat:2|default:"0.00" }}</td>
                                     </tr>
                                     {% endif %}
                                 </tbody>
@@ -110,12 +110,12 @@
                     {% if total_bought > 0 and total_sold > 0 %}
                     <div class="alert alert-info mt-3">
                         <h5>交易效益分析</h5>
-                        <p><strong>交易淨收入：</strong> {{ total_earned|sub:total_spent }}</p>
+                        <p><strong>交易淨收入：</strong> {{ total_earned|sub:total_spent|default:"0" }}</p>
                         <p><strong>平均交易利潤：</strong> 
                            {% if total_earned >= total_spent %}
-                               <span class="text-success">+{{ total_earned|sub:total_spent|div:total_sold|floatformat:2 }} 每項</span>
+                               <span class="text-success">+{{ total_earned|sub:total_spent|div:total_sold|floatformat:2|default:"0.00" }} 每{{ item_name }}</span>
                            {% else %}
-                               <span class="text-danger">{{ total_earned|sub:total_spent|div:total_sold|floatformat:2 }} 每項</span>
+                               <span class="text-danger">{{ total_earned|sub:total_spent|div:total_sold|floatformat:2|default:"0.00" }} 每{{ item_name }}</span>
                            {% endif %}
                         </p>
                     </div>
@@ -129,7 +129,7 @@
                     {% if is_last_round %}
                         <div class="alert alert-success">
                             <h4>恭喜！您已完成所有實驗輪次。</h4>
-                            <p>感謝您參與本次 {{ item_name }}交易實驗！</p>
+                            <p>感謝您參與本次{{ item_name }}交易實驗！</p>
                             <p>您的最終收益為：<strong>{{ final_cash }}</strong></p>
                         </div>
                     {% else %}

@@ -78,7 +78,7 @@
                         <ul class="list-unstyled">
                             <li><i class="fas fa-info-circle text-warning"></i> 生產量不能超過碳權持有量</li>
                             <li><i class="fas fa-info-circle text-warning"></i> 交易會影響您的現金和碳權</li>
-                            <li><i class="fas fa-info-circle text-warning"></i> 請謹慎計算成本效益</li>
+                            <li><i class="fas fa-info-circle text-warning"></i> 邊際成本隨生產量增加而增加</li>
                         </ul>
                     </div>
                 </div>
@@ -102,10 +102,28 @@
                 </li>
             </ul>
         </div>
+
+        <!-- 新增：邊際成本函數說明 -->
+        <div class="card bg-light mt-4">
+            <div class="card-header bg-info text-white">
+                <h5><i class="fas fa-calculator"></i> 成本計算說明</h5>
+            </div>
+            <div class="card-body">
+                <p>在本實驗中，您的生產成本將隨著生產量增加而遞增：</p>
+                <ul>
+                    <li><strong>邊際成本函數：</strong> MC(q) = a × q</li>
+                    <li><strong>總成本計算：</strong> TC = (a × q²) ÷ 2</li>
+                    <li><strong>邊際成本係數 a：</strong> 將在實驗開始後隨機分配給您</li>
+                </ul>
+                <div class="alert alert-info mt-3">
+                    <p class="mb-0"><strong>說明：</strong>邊際成本是指多生產一單位的額外成本，隨著生產量的增加而增加。您需要平衡邊際成本、碳權成本和銷售收入來獲取最大利潤。</p>
+                </div>
+            </div>
+        </div>
         
         <div class="alert alert-primary mt-4">
             <h5><i class="fas fa-lightbulb"></i> 成功策略提示</h5>
-            <p>在碳權交易中，您需要權衡交易成本與生產利潤。合理的碳權價格和適當的生產規模能夠幫助您獲得最大收益。</p>
+            <p>在碳權交易中，您需要權衡交易成本與生產利潤。合理的碳權價格、適當的生產規模以及對邊際成本的精確估算能夠幫助您獲得最大收益。請注意：生產數量越大，每單位的生產成本越高！</p>
         </div>
     </div>
 </div>

@@ -1,21 +1,21 @@
 {% extends "global/Page.html" %}
 {% load static %}
 
-{% block title %}即時物品交易市場{% endblock %}
+{% block title %}即時{{ item_name }}交易市場{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="card mb-4">
         <div class="card-header bg-primary text-white">
-            <h2><i class="fas fa-exchange-alt"></i> 即時物品交易市場</h2>
+            <h2><i class="fas fa-exchange-alt"></i> 即時{{ item_name }}交易市場</h2>
         </div>
         <div class="card-body">
             <p id="timer" class="alert alert-warning"><b>剩餘時間：</b>
                <span id="countdown" class="font-weight-bold">{{ timeout_seconds }}</span> 秒</p>
             
             <div class="alert alert-info">
-                <h5>歡迎來到物品交易市場</h5>
-                <p>您可以在此買賣{{ item_name }}。請注意觀察價格變化，制定最佳交易策略！</p>
+                <h5>您可以在此買賣{{ item_name }}</h5>
+                <p>請注意觀察價格變化，制定最佳交易策略！</p>
             </div>
             
             <!-- 狀態通知區域 -->
@@ -27,21 +27,27 @@
     
     <div class="row">
         <div class="col-md-4">
-            <div class="card">
+            <div class="card h-100">
                 <div class="card-header bg-primary text-white">
                     <h4>您的資訊</h4>
                 </div>
                 <div class="card-body">
-                    <ul class="list-group">
-                        <li class="list-group-item">現金：<b id="cash">{{ cash }}</b></li>
-                        <li class="list-group-item">{{ item_name }}持有：<b id="permits">{{ items }}</b></li>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>現金：</span>
+                            <span class="badge badge-success badge-pill" id="cash">{{ cash }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>{{ item_name }}持有：</span>
+                            <span class="badge badge-primary badge-pill" id="permits">{{ items }}</span>
+                        </li>
                     </ul>
                 </div>
             </div>
         </div>
         
         <div class="col-md-8">
-            <div class="card">
+            <div class="card h-100">
                 <div class="card-header bg-success text-white">
                     <h4>提交掛單</h4>
                 </div>
@@ -62,7 +68,11 @@
                         <label class="col-sm-3 col-form-label">價格：<span id="price-value">50</span></label>
                         <div class="col-sm-9">
                             <input type="range" id="price" class="form-control-range" min="1" max="100" step="1" value="50"
-                                   oninput="updatePriceDisplay()">
+                                   oninput="updatePriceDisplay(); updateTotalPrice();">
+                            <div class="d-flex justify-content-between small text-muted">
+                                <span>1</span>
+                                <span>100</span>
+                            </div>
                         </div>
                     </div>
 
@@ -70,7 +80,21 @@
                         <label class="col-sm-3 col-form-label">數量：<span id="quantity-value">1</span></label>
                         <div class="col-sm-9">
                             <input type="range" id="quantity" class="form-control-range" min="1" max="50" step="1" value="1"
-                                   oninput="updateQuantityDisplay()">
+                                   oninput="updateQuantityDisplay(); updateTotalPrice();">
+                            <div class="d-flex justify-content-between small text-muted">
+                                <span>1</span>
+                                <span>50</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 新增：總價格計算器 -->
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">總價格：</label>
+                        <div class="col-sm-9">
+                            <div class="alert alert-info mb-0">
+                                <span id="price-value-display">50</span> × <span id="quantity-value-display">1</span> = <strong id="total-price-display" class="text-success font-weight-bold">50</strong>
+                            </div>
                         </div>
                     </div>
 
@@ -91,46 +115,52 @@
     <div class="row mt-3">
         <div class="col-md-6">
             <div class="card">
-                <div class="card-header bg-info text-white">
+                <div class="card-header bg-success text-white">
                     <h4>買單列表</h4>
+                    <small class="text-white-50">想要購買{{ item_name }}的訂單</small>
                 </div>
                 <div class="card-body">
-                    <table class="table table-striped" id="buy-offers">
-                        <thead>
-                            <tr>
-                                <th>價格</th><th>數量</th><th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- 買單數據會在JS中填充 -->
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover" id="buy-offers">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>單價</th><th>總價格</th><th>數量</th><th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 買單數據會在JS中填充 -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
         
         <div class="col-md-6">
             <div class="card">
-                <div class="card-header bg-info text-white">
+                <div class="card-header bg-danger text-white">
                     <h4>賣單列表</h4>
+                    <small class="text-white-50">想要出售{{ item_name }}的訂單</small>
                 </div>
                 <div class="card-body">
-                    <table class="table table-striped" id="sell-offers">
-                        <thead>
-                            <tr>
-                                <th>價格</th><th>數量</th><th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- 賣單數據會在JS中填充 -->
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover" id="sell-offers">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>單價</th><th>總價格</th><th>數量</th><th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 賣單數據會在JS中填充 -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- 開發調試按鈕 -->
+    <!-- 調試控制 -->
     <div class="row mt-3" id="debug-controls" style="display: none;">
         <div class="col-md-12">
             <button id="debug-toggle" class="btn btn-sm btn-secondary" onclick="toggleDebug(); return false;">顯示調試信息</button>
@@ -150,19 +180,16 @@ let isProcessingAction = false;
 function log(message) {
     if (DEBUG) {
         console.log(`[${new Date().toLocaleTimeString()}] ${message}`);
-        // 添加到調試區域
         const debugInfo = document.getElementById('debug-info');
         if (debugInfo) {
             const entry = document.createElement('div');
             entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
             debugInfo.appendChild(entry);
             
-            // 限制顯示的日誌數量
             while (debugInfo.children.length > 20) {
                 debugInfo.removeChild(debugInfo.firstChild);
             }
             
-            // 自動滾動到底部
             debugInfo.scrollTop = debugInfo.scrollHeight;
         }
     }
@@ -179,13 +206,11 @@ function toggleDebug() {
         debugInfo.style.display = 'none';
         btn.textContent = '顯示調試信息';
     }
-    // 阻止頁面跳轉
     return false;
 }
 
 // 強制刷新
 function forceRefresh() {
-    // 防止多次點擊
     if (isProcessingAction) return false;
     
     isProcessingAction = true;
@@ -193,12 +218,10 @@ function forceRefresh() {
     showStatus('強制刷新中...', 'info', 2000);
     log('發送強制刷新請求');
     
-    // 設置超時自動重置狀態
     setTimeout(() => {
         isProcessingAction = false;
     }, 3000);
     
-    // 阻止頁面跳轉
     return false;
 }
 
@@ -222,7 +245,9 @@ function selectDirection(dir) {
         document.getElementById('sell-btn').className = 'btn btn-primary';
     }
     
-    // 阻止頁面跳轉
+    // 更新總價格顏色
+    updateTotalPrice();
+    
     return false;
 }
 
@@ -231,12 +256,10 @@ function updateSellButtonState() {
     const permits = parseInt(document.getElementById('permits').innerText);
     const sellBtn = document.getElementById('sell-btn');
     
-    // 如果沒有物品，禁用賣出選項
     if (permits <= 0) {
         sellBtn.disabled = true;
         sellBtn.className = 'btn btn-outline-secondary';
         
-        // 如果當前選中的是賣出，則切換到買入
         if (document.getElementById('selected-direction').value === 'sell') {
             selectDirection('buy');
         }
@@ -249,10 +272,8 @@ function updateSellButtonState() {
 
 // 狀態顯示函數
 function showStatus(message, type = 'info', duration = 0) {
-    // 先清除所有現有狀態
     statusContainer.innerHTML = '';
     
-    // 創建新的狀態元素
     const alert = document.createElement('div');
     alert.className = `alert alert-${type} alert-dismissible fade show`;
     alert.innerHTML = `
@@ -263,7 +284,6 @@ function showStatus(message, type = 'info', duration = 0) {
     `;
     statusContainer.appendChild(alert);
     
-    // 如果設置了持續時間，自動關閉
     if (duration > 0) {
         setTimeout(() => {
             if (alert.parentNode) {
@@ -277,67 +297,48 @@ function showStatus(message, type = 'info', duration = 0) {
         }, duration);
     }
     
-    // 記錄到控制台
     log(`狀態通知: [${type}] ${message}`);
 }
 
-// 更新滑桿文字
+// 更新滑桿文字和總價格
 function updatePriceDisplay() {
-    const priceSlider = document.getElementById('price');
-    const priceValue = document.getElementById('price-value');
-    
-    if (priceSlider && priceValue) {
-        priceValue.innerText = parseInt(priceSlider.value);
-        log('價格更新為: ' + priceSlider.value);
-    }
+    const price = parseInt(document.getElementById('price').value);
+    document.getElementById('price-value').innerText = price;
+    document.getElementById('price-value-display').innerText = price;
+    updateTotalPrice();
 }
 
 function updateQuantityDisplay() {
-    const quantitySlider = document.getElementById('quantity');
-    const quantityValue = document.getElementById('quantity-value');
-    
-    if (quantitySlider && quantityValue) {
-        quantityValue.innerText = parseInt(quantitySlider.value);
-        log('數量更新為: ' + quantitySlider.value);
-    }
+    const quantity = parseInt(document.getElementById('quantity').value);
+    document.getElementById('quantity-value').innerText = quantity;
+    document.getElementById('quantity-value-display').innerText = quantity;
+    updateTotalPrice();
 }
 
-// 頁面載入後的初始化
-window.addEventListener('load', function() {
-    log('頁面載入完成，開始初始化');
+// 新增：更新總價格
+function updateTotalPrice() {
+    const price = parseInt(document.getElementById('price').value);
+    const quantity = parseInt(document.getElementById('quantity').value);
+    const totalPrice = price * quantity;
     
-    // 檢查現金和物品數量是否已顯示
-    const cashElement = document.getElementById('cash');
-    const permitsElement = document.getElementById('permits');
+    document.getElementById('total-price-display').innerText = totalPrice;
     
-    log('現金元素: ' + (cashElement ? cashElement.textContent : '找不到'));
-    log('物品元素: ' + (permitsElement ? permitsElement.textContent : '找不到'));
+    // 如果總價格超過現金，則顯示警告（僅買入時）
+    const direction = document.getElementById('selected-direction').value;
+    const totalPriceDisplay = document.getElementById('total-price-display');
     
-    // 如果顯示為空或None，設為0
-    if (cashElement && (!cashElement.textContent || cashElement.textContent === 'None')) {
-        cashElement.textContent = '0';
+    if (direction === 'buy') {
+        const currentCash = parseInt(document.getElementById('cash').innerText);
+        if (totalPrice > currentCash) {
+            totalPriceDisplay.className = 'text-danger font-weight-bold';
+        } else {
+            totalPriceDisplay.className = 'text-success font-weight-bold';
+        }
+    } else {
+        // 賣出時不需要檢查現金
+        totalPriceDisplay.className = 'text-success font-weight-bold';
     }
-    
-    if (permitsElement && (!permitsElement.textContent || permitsElement.textContent === 'None')) {
-        permitsElement.textContent = '0';
-    }
-    
-    // 初始化拉桿顯示值
-    updatePriceDisplay();
-    updateQuantityDisplay();
-    
-    // 更新賣出按鈕狀態
-    updateSellButtonState();
-    
-    // 發送ping請求獲取最新數據
-    log('頁面載入，發送ping請求');
-    liveSend({type: 'ping'});
-    
-    // 如果處於調試模式，顯示調試控制區
-    if (DEBUG) {
-        document.getElementById('debug-controls').style.display = 'flex';
-    }
-});
+}
 
 // 倒數計時與閃紅
 const timer = setInterval(() => {
@@ -348,17 +349,13 @@ const timer = setInterval(() => {
     if (countdown <= 30) {
         timerEl.style.color = (countdown % 2 ? 'red' : 'black');
     }
-    // 注意：不要自動提交表單，讓oTree處理
 }, 1000);
 
 // 提交掛單 (WebSocket)
 function submitOffer() {
-    // 防止多次點擊或處理中重複提交
     if (isProcessingAction) return false;
     
-    // 獲取選中的方向 (使用隱藏輸入)
     const direction = document.getElementById('selected-direction').value;
-    
     const price = parseInt(document.getElementById('price').value);
     const quantity = parseInt(document.getElementById('quantity').value);
     
@@ -372,20 +369,16 @@ function submitOffer() {
     } else if (direction === 'sell') {
         const permits = parseInt(document.getElementById('permits').innerText);
         if (permits < quantity) {
-            showStatus(`物品不足！需要 ${quantity}，但您只有 ${permits}`, 'danger', 3000);
+            showStatus(`${item_name}不足！需要 ${quantity}，但您只有 ${permits}`, 'danger', 3000);
             return false;
         }
     }
     
     log(`提交掛單: ${direction}, 價格: ${price}, 數量: ${quantity}`);
     
-    // 顯示處理中狀態
     showStatus('處理掛單中...請稍候', 'info');
     
-    // 設置處理中標誌
     isProcessingAction = true;
-    
-    // 禁用提交按鈕防止重複提交
     submitBtn.disabled = true;
     
     const data = {
@@ -395,12 +388,10 @@ function submitOffer() {
         quantity: quantity
     };
     
-    // 添加一個標記，用於追蹤此次請求
     window.lastRequestTime = new Date().getTime();
     
     liveSend(data);
     
-    // 設置超時處理
     setTimeout(() => {
         if (submitBtn.disabled) {
             submitBtn.disabled = false;
@@ -410,13 +401,11 @@ function submitOffer() {
         }
     }, 5000);
     
-    // 阻止頁面跳轉
     return false;
 }
 
 // 接受掛單
 function acceptOffer(type, pid, price, qty) {
-    // 防止多次點擊或處理中重複操作
     if (isProcessingAction) return false;
     
     // 資源檢查
@@ -429,20 +418,17 @@ function acceptOffer(type, pid, price, qty) {
     } else if (type === 'buy') {
         const permits = parseInt(document.getElementById('permits').innerText);
         if (permits < qty) {
-            showStatus(`物品不足！需要 ${qty}，但您只有 ${permits}`, 'danger', 3000);
+            showStatus(`${item_name}不足！需要 ${qty}，但您只有 ${permits}`, 'danger', 3000);
             return false;
         }
     }
     
     log(`接受掛單: ${type}, 玩家: ${pid}, 價格: ${price}, 數量: ${qty}`);
     
-    // 顯示處理中狀態
     showStatus('處理交易中...請稍候', 'info');
     
-    // 設置處理中標誌
     isProcessingAction = true;
     
-    // 禁用按鈕
     const buttons = document.querySelectorAll('.btn');
     buttons.forEach(btn => btn.disabled = true);
     
@@ -454,7 +440,6 @@ function acceptOffer(type, pid, price, qty) {
         quantity: qty
     });
     
-    // 設置超時處理
     setTimeout(() => {
         const anyDisabled = Array.from(buttons).some(btn => btn.disabled);
         if (anyDisabled) {
@@ -465,24 +450,19 @@ function acceptOffer(type, pid, price, qty) {
         }
     }, 5000);
     
-    // 阻止頁面跳轉
     return false;
 }
 
 // 取消掛單
 function cancelOffer(dir, price, qty) {
-    // 防止多次點擊或處理中重複操作
     if (isProcessingAction) return false;
     
     log(`取消掛單: ${dir}, 價格: ${price}, 數量: ${qty}`);
     
-    // 顯示處理中狀態
     showStatus('取消掛單中...請稍候', 'info');
     
-    // 設置處理中標誌
     isProcessingAction = true;
     
-    // 禁用按鈕
     const buttons = document.querySelectorAll('.btn');
     buttons.forEach(btn => btn.disabled = true);
     
@@ -493,7 +473,6 @@ function cancelOffer(dir, price, qty) {
         quantity: qty
     });
     
-    // 設置超時處理
     setTimeout(() => {
         const anyDisabled = Array.from(buttons).some(btn => btn.disabled);
         if (anyDisabled) {
@@ -504,7 +483,6 @@ function cancelOffer(dir, price, qty) {
         }
     }, 5000);
     
-    // 阻止頁面跳轉
     return false;
 }
 
@@ -513,13 +491,10 @@ function updateMarket(data) {
     try {
         log(`更新市場數據: ${JSON.stringify(data)}`);
         
-        // 啟用所有按鈕
         document.querySelectorAll('.btn').forEach(btn => btn.disabled = false);
         
-        // 重置處理中標誌
         isProcessingAction = false;
         
-        // 深度檢查數據結構
         if (!data) {
             throw new Error('收到空數據');
         }
@@ -527,7 +502,6 @@ function updateMarket(data) {
         if (typeof data.cash === 'undefined' || typeof data.items === 'undefined') {
             log(`數據缺少必要字段: ${JSON.stringify(data)}`);
             showStatus('數據結構異常，重新請求數據...', 'warning', 2000);
-            // 嘗試重新獲取數據
             setTimeout(() => liveSend({type: 'ping'}), 1000);
             return;
         }
@@ -536,15 +510,15 @@ function updateMarket(data) {
         document.getElementById('cash').innerText = data.cash;
         document.getElementById('permits').innerText = data.items;
         
+        // 更新總價格顏色
+        updateTotalPrice();
+        
         // 更新賣出按鈕狀態
         updateSellButtonState();
         
         // 檢查是否有交易通知
         if (data.notification) {
             showStatus(data.notification.message, data.notification.type, 5000);
-        } else {
-            // 成功提示（如果沒有特定通知）
-            showStatus('更新成功', 'success', 2000);
         }
         
         // 更新買單表格
@@ -554,16 +528,26 @@ function updateMarket(data) {
             data.buy_offers.forEach(o => {
                 let row = document.createElement('tr');
                 
+                // 單價
                 let cell1 = document.createElement('td');
-                // 改為整數顯示
                 cell1.textContent = parseInt(o.price);
+                cell1.className = 'text-success font-weight-bold';
                 row.appendChild(cell1);
                 
+                // 總價格
                 let cell2 = document.createElement('td');
-                cell2.textContent = o.quantity;
+                const totalPrice = o.price * o.quantity;
+                cell2.textContent = totalPrice;
+                cell2.className = 'text-primary';
                 row.appendChild(cell2);
                 
+                // 數量
                 let cell3 = document.createElement('td');
+                cell3.textContent = o.quantity;
+                row.appendChild(cell3);
+                
+                // 操作
+                let cell4 = document.createElement('td');
                 
                 // 不能接受自己的買單
                 if (o.player_id != playerId) {
@@ -575,7 +559,7 @@ function updateMarket(data) {
                         acceptOffer('buy', o.player_id, o.price, o.quantity);
                         return false;
                     };
-                    cell3.appendChild(acceptBtn);
+                    cell4.appendChild(acceptBtn);
                 }
                 
                 // 只能取消自己的買單
@@ -588,18 +572,18 @@ function updateMarket(data) {
                         cancelOffer('buy', o.price, o.quantity);
                         return false;
                     };
-                    cell3.appendChild(cancelBtn);
+                    cell4.appendChild(cancelBtn);
                 }
                 
-                row.appendChild(cell3);
+                row.appendChild(cell4);
                 buyTb.appendChild(row);
             });
         } else {
             let row = document.createElement('tr');
             let cell = document.createElement('td');
-            cell.colSpan = 3; // 修改為3列
+            cell.colSpan = 4;
             cell.textContent = '目前沒有買單';
-            cell.className = 'text-center';
+            cell.className = 'text-center text-muted';
             row.appendChild(cell);
             buyTb.appendChild(row);
         }
@@ -611,16 +595,26 @@ function updateMarket(data) {
             data.sell_offers.forEach(o => {
                 let row = document.createElement('tr');
                 
+                // 單價
                 let cell1 = document.createElement('td');
-                // 改為整數顯示
                 cell1.textContent = parseInt(o.price);
+                cell1.className = 'text-danger font-weight-bold';
                 row.appendChild(cell1);
                 
+                // 總價格
                 let cell2 = document.createElement('td');
-                cell2.textContent = o.quantity;
+                const totalPrice = o.price * o.quantity;
+                cell2.textContent = totalPrice;
+                cell2.className = 'text-primary';
                 row.appendChild(cell2);
                 
+                // 數量
                 let cell3 = document.createElement('td');
+                cell3.textContent = o.quantity;
+                row.appendChild(cell3);
+                
+                // 操作
+                let cell4 = document.createElement('td');
                 
                 // 不能接受自己的賣單
                 if (o.player_id != playerId) {
@@ -632,7 +626,7 @@ function updateMarket(data) {
                         acceptOffer('sell', o.player_id, o.price, o.quantity);
                         return false;
                     };
-                    cell3.appendChild(acceptBtn);
+                    cell4.appendChild(acceptBtn);
                 }
                 
                 // 只能取消自己的賣單
@@ -645,48 +639,63 @@ function updateMarket(data) {
                         cancelOffer('sell', o.price, o.quantity);
                         return false;
                     };
-                    cell3.appendChild(cancelBtn);
+                    cell4.appendChild(cancelBtn);
                 }
                 
-                row.appendChild(cell3);
+                row.appendChild(cell4);
                 sellTb.appendChild(row);
             });
         } else {
             let row = document.createElement('tr');
             let cell = document.createElement('td');
-            cell.colSpan = 3; // 修改為3列
+            cell.colSpan = 4;
             cell.textContent = '目前沒有賣單';
-            cell.className = 'text-center';
+            cell.className = 'text-center text-muted';
             row.appendChild(cell);
             sellTb.appendChild(row);
         }
     } catch (error) {
         log(`更新市場時發生錯誤: ${error.message}`);
         showStatus(`更新失敗: ${error.message}`, 'danger', 5000);
-        // 重置處理中標誌
         isProcessingAction = false;
     }
 }
+
+// 頁面首次載入時主動請求數據
+window.addEventListener('load', function(event) {
+    event.preventDefault();
+    log('頁面載入，發送ping請求');
+    liveSend({type: 'ping'});
+    
+    // 初始化顯示
+    updatePriceDisplay();
+    updateQuantityDisplay();
+    updateTotalPrice();
+    updateSellButtonState();
+    
+    // 如果處於調試模式，顯示調試控制區
+    if (DEBUG) {
+        document.getElementById('debug-controls').style.display = 'flex';
+    }
+    
+    return false;
+});
 
 // 統一處理oTree回應的中間函數
 function processOtreeResponse(data) {
     try {
         log(`處理oTree回應數據: ${JSON.stringify(data).substring(0, 500)}...`);
         
-        // 多重嘗試獲取有效數據
         let playerData = null;
         
-        // 方法1: 直接使用playerId查找
         if (data && typeof data === 'object' && data[playerId]) {
             playerData = data[playerId];
             log('方法1成功: 使用playerId直接找到數據');
         }
-        // 方法2: 數據本身就是我們需要的
         else if (data && typeof data === 'object' && data.type === 'update') {
             playerData = data;
             log('方法2成功: 數據本身就是更新數據');
         }
-        // 方法3: 遍歷頂層鍵查找
         else if (data && typeof data === 'object') {
             for (const key in data) {
                 if (data[key] && typeof data[key] === 'object' && data[key].type) {
@@ -696,7 +705,6 @@ function processOtreeResponse(data) {
                 }
             }
             
-            // 方法4: 深度搜索 (但只搜索第一層)
             if (!playerData) {
                 for (const key in data) {
                     const value = data[key];
@@ -720,7 +728,6 @@ function processOtreeResponse(data) {
                 return true;
             } else if (playerData.type === 'fail') {
                 showStatus(`操作失敗: ${playerData.message || '未知錯誤'}`, 'danger', 5000);
-                // 重置處理中標誌
                 isProcessingAction = false;
                 return true;
             }
@@ -730,24 +737,20 @@ function processOtreeResponse(data) {
         return false;
     } catch (error) {
         log(`處理oTree回應時發生錯誤: ${error.message}\n${error.stack}`);
-        // 重置處理中標誌
         isProcessingAction = false;
         return false;
     }
 }
 
-// 接收後端 - 完全重寫版本
+// 接收後端
 window.liveRecv = function(data) {
     try {
         log(`接收原始數據: ${JSON.stringify(data).substring(0, 500)}...`);
         
-        // 清除處理中狀態
         document.querySelectorAll('.btn').forEach(btn => btn.disabled = false);
         
-        // 嘗試解析並處理數據
         const success = processOtreeResponse(data);
         
-        // 如果處理失敗，嘗試一次強制刷新
         if (!success) {
             log('處理失敗，嘗試自動重新請求數據');
             showStatus('數據處理失敗，嘗試重新獲取...', 'warning', 2000);
@@ -758,18 +761,15 @@ window.liveRecv = function(data) {
         showStatus(`數據處理錯誤: ${error.message}`, 'danger', 5000);
         document.querySelectorAll('.btn').forEach(btn => btn.disabled = false);
         
-        // 重置處理中標誌
         isProcessingAction = false;
         
-        // 嘗試恢復連接
         setTimeout(() => liveSend({type: 'ping'}), 2000);
     }
     
-    // 阻止事件冒泡和默認行為
     return false;
 };
 
-// 定時 ping，確保連接保持活躍 (每15秒)
+// 定時 ping
 setInterval(() => {
     if (!isProcessingAction) {
         log('定時ping');
@@ -779,7 +779,6 @@ setInterval(() => {
 
 // 防止表單提交事件
 document.addEventListener('submit', function(event) {
-    // 防止所有表單提交
     event.preventDefault();
     log('阻止了表單提交');
     return false;
@@ -787,9 +786,7 @@ document.addEventListener('submit', function(event) {
 
 // 阻止頁面上的所有連結默認行為
 document.addEventListener('click', function(event) {
-    // 檢查是否點擊了連結
     if (event.target.tagName === 'A' || event.target.parentElement.tagName === 'A') {
-        // 檢查是否是特殊連結（例如管理員連結）
         const href = event.target.href || event.target.parentElement.href;
         if (href && !href.includes('/admin/') && !href.includes('/logout/')) {
             log('阻止了連結點擊: ' + href);
@@ -799,9 +796,8 @@ document.addEventListener('click', function(event) {
     }
 });
 
-// 頁面離開前確認（防止意外離開）
+// 頁面離開前確認
 window.addEventListener('beforeunload', function(e) {
-    // 如果正在交易中，顯示確認信息
     if (isProcessingAction) {
         const confirmationMessage = '操作正在處理中，確定要離開嗎？';
         e.returnValue = confirmationMessage;
