@@ -9,8 +9,8 @@
 python clean_database.py
 """
 
-import sys
 import os
+import sys
 from pathlib import Path
 
 # 確保可以導入 utils 模組
@@ -23,12 +23,13 @@ except ImportError as e:
     print("請確保 utils/database_cleaner.py 文件存在且可訪問")
     sys.exit(1)
 
+
 def main():
     """主函數"""
     print("=" * 60)
     print("碳排放交易實驗平台 - 資料庫清理工具")
     print("=" * 60)
-    
+
     # 檢查資料庫文件
     db_file = "db.sqlite3"
     if not os.path.exists(db_file):
@@ -43,31 +44,32 @@ def main():
             if not os.path.exists(db_file):
                 print(f"錯誤：資料庫文件 '{db_file}' 不存在！")
                 return
-    
+
     print(f"使用資料庫文件: {db_file}")
     print()
-    
+
     # 創建清理器
     cleaner = DatabaseCleaner(db_file)
-    
+
     # 執行清理
     print("開始資料庫清理程序...")
     result = cleaner.run_full_cleaning()
-    
-    if 'error' in result:
+
+    if "error" in result:
         print(f"[清理失敗]: {result['error']}")
     else:
         print("[資料庫清理完成]")
-        
-        if 'summary' in result:
-            summary = result['summary']
-            print(f"[清理統計]:")
+
+        if "summary" in result:
+            summary = result["summary"]
+            print("[清理統計]:")
             print(f"   - 修復問題數: {summary.get('total_issues_fixed', 0)}")
             print(f"   - 警告數: {summary.get('total_warnings', 0)}")
             print(f"   - 清理表格數: {summary.get('cleaned_tables', 0)}")
-        
-        print(f"清理後數據已導出至: cleaned_data/")  
-        print(f"詳細報告請查看生成的 cleaning_report_*.json 文件]")
+
+        print("清理後數據已導出至: cleaned_data/")
+        print("詳細報告請查看生成的 cleaning_report_*.json 文件]")
+
 
 if __name__ == "__main__":
-    main() 
+    main()
