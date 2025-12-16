@@ -1,4 +1,7 @@
 """
 配置包模組
 """
-from .config import config, ConfigConstants, ExperimentConfig 
+
+from .config import ConfigConstants as ConfigConstants
+from .config import ExperimentConfig as ExperimentConfig
+from .config import config as config
